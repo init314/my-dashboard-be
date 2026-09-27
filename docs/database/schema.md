@@ -1,27 +1,9 @@
-# SQLite schema v6
+# SQLite schema v5
 
-소스: `src/main/resources/db/schema.sql`. DatabaseInitialization이 기본 schema와 V3, V4, V5, V6 migrations를 적용하며 최종 user_version은 6이다. V3/V5의 devices 컬럼 추가는 `PRAGMA table_info`로 검사해 재시작 시 중복 적용하지 않는다.
+소스: `src/main/resources/db/schema.sql`. DatabaseInitialization이 시작 시 idempotent CREATE/INSERT와 기본 schema 적용 후 V4__notes.sql로 user_version=4를 적용한다.
 기존 초기 프로젝트에는 업무 테이블이 없었으므로 데이터 삭제 없이 추가한다. v3는 db/migrations/V3__device_network.sql로 기존 devices에 network_mode를, v5는 db/migrations/V5__device_jump_proxy.sql로 jump_device_ids를 추가한다. PRAGMA table_info로 적용 여부를 확인하므로 재시작 시 반복 추가하지 않는다. 기존 장비는 DIRECT와 빈 점프 체인으로 보존한다.
-V6 `db/migrations/V6__telemetry.sql`은 서비스 telemetry 테이블과 인덱스를 추가한다. 대시보드 시작 시 idempotent하게 적용하며 기존 데이터는 보존한다.
 기존 테이블 owner는 catalog이며 soft delete는 사용하지 않는다. 아래 표의 컬럼은 별도 명시가 없으면 NOT NULL, default 없음이다.
 TEXT ID는 서버 생성 UUID이며 devices의 기본 프로필만 `local`이다. 기존 catalog 시간은 INTEGER Unix epoch milliseconds, boolean은 INTEGER 0/1이다.
-Telemetry 서비스 ID는 `svc_` prefix 난수이며 서비스 API 키 원문은 저장하지 않고 SHA-256 hash만 저장한다. telemetry 시각은 INTEGER Unix epoch milliseconds다.
-
-## telemetry_services
-
-OWNER가 관리하는 외부 서비스와 키 hash. 이벤트/게이지와 서비스 1:N 관계이며 서비스 비활성화는 데이터 보존을 위한 soft disable로 처리한다.
-
-| 컬럼 | 타입 | 필수 | Index/Unique | 의미 |
-| --- | --- | --- | --- | --- |
-| id | TEXT | 예 | PK | svc_ 서비스 ID |
-| name / description / service_type | TEXT | 예 | 없음 | 표시 이름, 설명, Backend API/Web/Discord Bot/Worker/Custom |
-| enabled | INTEGER | 예 | CHECK 0/1 | ingestion 허용 상태 |
-| created_at / last_used_at | INTEGER | created 필수 | 없음 | epoch ms 생성/마지막 유효 key 사용 |
-| api_key_hash | TEXT | 예 | 없음 | SHA-256, 원문 미저장 |
-
-## telemetry_events, telemetry_gauges, service_metrics_hourly
-
-`telemetry_events`는 제한된 properties JSON과 pseudonymous user ID를 보관하고 `(service_id, occurred_at)` 및 사용자 기간 인덱스를 사용한다. `telemetry_gauges`는 metric name/value/time raw sample을 저장한다. `service_metrics_hourly`와 `service_metrics_daily`는 요청/오류 수와 latency 합·표본 수를 시간/UTC 날짜 단위로 증분 유지한다. 조회 합계는 완전한 시간 버킷을 사용하고 경계의 부분 버킷만 raw sample을 읽어 선택 기간을 정확히 지킨다. percentile 및 endpoint/method/status 분석은 조회 기간 안의 request event를 사용한다. 수집은 30일보다 오래된 timestamp를 거부하고 request당 최대 64 KiB, 분당 서비스당 120건, batch당 event/gauge 각각 최대 100개로 제한한다.
 
 ## devices
 
@@ -178,7 +160,7 @@ owner는 planner, soft delete 없음. 아래 모든 열은 NOT NULL/default 없�
 
 ## 클라우드 드라이브 (파일시스템 저장)
 
-SQLite 테이블/마이그레이션 추가 없음. cloud 모듈 소유 CLOUD_ROOT/files는 활성 파일, trash/{UUID}/payload는 삭제된 원본, record.json의 path(String 필수 가상 원래 경로)와 deletedAt(long 필수 epoch ms)는 내부 TrashRecord이다. staging은 임시 업로드/복사/ZIP 용도다. 대시보드 OWNER와 Samba SMB 계정의 별도 인증 및 파일시스템 owner/group/mode로 보호한다. 휴지통으로 소프트 삭제하고 명시적인 영구 삭제만 재귀 제거한다. 기존 장비/사용자/세션 테이블 관계는 변경하지 않는다.
+SQLite 테이블/마이그레이션 추가 없음. cloud 모듈 소유 CLOUD_ROOT/files는 활성 파일, trash/{UUID}/payload는 삭제된 원본, record.json의 path(String 필수 가상 원래 경로)와 deletedAt(long 필수 epoch ms)는 내부 TrashRecord이다. staging은 임시 업로드/복사/ZIP 용도다. 서버 단일 계정과 파일시스템 권한으로 보호한다. 휴지통으로 소프트 삭제하고 명시적인 영구 삭제만 재귀 제거한다. 기존 장비/사용자/세션 테이블 관계는 변경하지 않는다.
 
 카카오톡 제거 후 기존 DESKTOP 행은 물리 삭제하지 않고 activity 및 workspace_tabs 조회에서 제외한다. 새 요청에는 DESKTOP을 허용하지 않는다. 테이블 구조 변경은 없다.
 

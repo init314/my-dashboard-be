@@ -29,7 +29,5 @@ public class DatabaseInitialization implements InitializingBean {
       new ResourceDatabasePopulator(
               new ClassPathResource("db/migrations/V5__device_jump_proxy.sql"))
           .execute(dataSource);
-    new ResourceDatabasePopulator(new ClassPathResource("db/migrations/V6__telemetry.sql"))
-        .execute(dataSource);
   }
 }

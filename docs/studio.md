@@ -10,20 +10,20 @@
 - 편집기: 여러 파일 탭, 변경 표시, Ctrl+S 저장, 구문 강조(JavaScript/TypeScript/JSX, Python, HTML, CSS, Java, JSON, Markdown), 줄 번호, 찾기/바꾸기, 실행 취소. CodeMirror 정적 번들은 같은 서버에서 제공한다.
 - Git: 초기화, HTTPS/SSH 저장소 복제, origin 주소 설정, 변경/스테이징 상태, diff, 파일별 stage/unstage와 전체 stage/unstage, 저장소별 작성자, 커밋, 브랜치 생성/전환, fetch, pull(--ff-only), push, 최근 커밋. 변경 검토는 충돌·커밋 예정·작업 폴더 변경을 별도 그룹으로 표시하며 상태와 파일별 diff를 함께 보여 준다. 새 브랜치의 첫 push는 origin/HEAD에 upstream을 설정한다. 저장소 최상위 폴더를 열어 사용한다. 복제 후 입력된 새 작업 폴더를 연다.
 - GitHub 로그인: 원격 `gh auth login --hostname github.com --git-protocol https --web`, 승인 후 `gh auth setup-git`. 기존 원격 Git credential helper/SSH 인증도 사용한다. 다른 Git 호스팅은 SSH 터미널에서 해당 CLI로 인증한다.
-- Codex: 프로젝트 편집기에서는 등록 SSH 장비의 Codex CLI와 계정 세션을 사용한다. 우측 하단 플로팅 ✦ assistant는 서버 Codex로 동작하며 앱의 전역 페이지/캘린더/노트 MCP 도구를 이용한다. 모델·추론 강도·남은 컨텍스트 사용량을 볼 수 있다. 채팅 상세는 [Codex 패널](codex.md)을 참고한다.
+- Codex: 원격 로그인 상태, 기기 코드 로그인/로그아웃, 새 세션·세션 검색/보관·이름 변경·분기·압축·되돌리기, 모델·추론 강도 선택, 현재 파일·선택 영역·경로·이미지·스킬 첨부, 읽기 전용 또는 작업 폴더 수정 권한, 승인·질문·추가 지시·중지로 실행한다. JSONL의 계획·응답·명령 실행·파일 변경·토큰 사용량을 안전한 텍스트/코드 블록으로 표시한다. 결과 확인 후 파일을 다시 읽고 Git diff로 검토한다.
 - 실행 중지: 진행 중인 원격 작업을 취소한다. 이미 저장된 파일이나 완료된 커밋은 되돌리지 않는다. 로그아웃/세션 만료 시에도 작업을 취소한다.
 
 ## 자동 설치와 실행 환경
 
 Git/Python이 없는 서버는 `apt-get`, `dnf`, `apk`로 `git python3 ca-certificates`를 설치한다. 패키지 설치에는 root 또는 `sudo -n` 권한이 필요하다. 권한이 없으면 오류에 필요한 패키지를 안내하고 중단하며 sudo 비밀번호를 웹에서 수집하지 않는다. 패키지가 이미 있으면 관리자 권한이 필요 없다.
 
-Codex는 Linux x86_64/aarch64의 공식 릴리스 파일을 SHA256 검증 후 `~/.local/bin`에 설치한다. 대시보드 서버 자체 assistant의 도구 준비 때 GitHub 최신 stable 릴리스를 확인하며, 릴리스 정보는 10분간 캐시한다. 설치 파일은 GitHub 릴리스 메타데이터에 공개된 SHA256과 대조한다. 최신 버전 확인이나 다운로드에 실패하면 설치된 CLI를 유지하고, 최초 설치라면 검증된 기본 버전으로 진행한다. 따라서 새 모델과 reasoning effort는 서버 CLI/App Server 업데이트 후 다음 모델 목록 조회에서 반영된다. 원격 SSH Codex는 기존처럼 최초 도구 준비 때 설치한 버전을 유지하며 자동 갱신하지 않는다. GitHub CLI 2.100.0 역시 고정 버전이며 자동 갱신하지 않는다. 서버와 원격 장비가 GitHub 릴리스/API에 접근할 수 있어야 한다. ARM 설치 파일 경로도 지원하지만 실제 실행 검증은 x86_64에서 수행한다.
+Codex 0.157.1 및 GitHub CLI 2.100.0은 Linux x86_64/aarch64의 공식 릴리스 파일을 다운로드하고 고정 SHA256을 검사하여 `~/.local/bin`에 설치한다. Codex는 공식 전체 패키지의 해시·실행 버전과 필수 보조 파일을 검증한다. ~/.local/share/codex 아래 버전별 패키지를 준비한 뒤 ~/.local/bin/codex 진입 링크를 원자적으로 전환한다. 버전이 같아도 codex-code-mode-host 등의 필수 파일이 없으면 복구한다. 패키지에는 검색·sandbox·음성 등 공식 런타임 리소스도 함께 보존한다. 검증 실패 시 기존 실행 파일을 유지한다. GitHub CLI는 해당 경로에 이미 있는 바이너리를 유지한다. 인증 캐시와 대화 기록은 변경하지 않는다. 버전 갱신 시 `src/main/resources/studio/remote.py`의 버전·해시를 함께 변경한다. 서버가 GitHub 릴리스와 필요한 인증/API 주소에 접근할 수 있어야 한다. ARM 설치 해시는 제공하지만 실제 실행 검증은 x86_64에서 수행한다.
 
-서버 자체 파일/Git 작업은 대시보드가 실행되는 Linux 환경에서 같은 helper를 직접 실행한다. Docker 배포 시 실행 위치는 dashboard 컨테이너이며 기본 작업 루트는 `/app/data/files`다. Git·Python·CA 인증서는 이미지에 포함한다. Codex·GitHub CLI와 인증/CLI 설정은 `/app/data/home` 아래에 보관하므로 기존 `/app/data` 볼륨으로 컨테이너 재생성 후 유지된다. 로컬 CLI에는 대시보드 로그인 비밀번호 등 서버 환경변수를 상속하지 않는다. server-local assistant에는 필요한 MCP bearer와 loopback URL만 전달한다. 최초 server-local setup은 `personal-dashboard` MCP 연결을 Codex CLI config에 등록한다.
+서버 자체 모드는 대시보드가 실행되는 Linux 환경에서 같은 helper/CLI를 직접 실행한다. Docker 배포 시 실행 위치는 dashboard 컨테이너이며 기본 작업 루트는 `/app/data/files`다. Git·Python·CA 인증서는 이미지에 포함하고 Codex·GitHub CLI는 첫 도구 준비 때 `/app/data/home/.local/bin`에 설치한다. 인증과 CLI 설정도 `/app/data/home`에 보관하므로 기존 `/app/data` 볼륨으로 컨테이너 재생성 후 유지된다. 로컬 CLI에는 대시보드 로그인 비밀번호 등 서버 환경변수를 상속하지 않는다. PATH/HOME/LANG/LC_ALL/TMPDIR만 전달한다.
 
 원격 모드는 계속 대상 SSH 계정에서 실행한다. 프로젝트 파일과 `.git`, CLI 인증/설정은 선택한 실행 환경에 남는다. 브라우저에는 현재 편집 버퍼만 있고 마지막 장비/폴더 선택만 localStorage에 기억한다. 대시보드 DB 스키마는 바뀌지 않는다. Docker 호스트의 다른 폴더를 편집하려면 해당 폴더를 작업 루트 아래로 명시적으로 마운트한다. Windows에서 JAR를 직접 실행하는 로컬 IDE는 지원하지 않으며 Docker의 Linux 환경을 사용한다.
 
-Codex는 `codex app-server`를 stdio JSON-RPC로 실행한다. 모델 목록과 저장된 세션을 조회하고 같은 thread를 resume하여 후속 turn을 보낸다. 읽기 전용/작업 폴더 수정 권한 및 on-request 승인을 사용하며 샌드박스 우회 옵션은 제공하지 않는다. 상세 기능과 제한은 [Codex 패널](codex.md)을 참조한다.
+Codex는 `codex app-server`를 stdio JSON-RPC로 실행한다. 모델 목록과 저장된 세션을 조회하고 같은 thread를 resume하여 후속 turn을 보낸다. 기본 전체 권한 모드는 container 내부의 파일과 네트워크를 승인 없이 사용한다. 제한이 필요하면 읽기 전용/작업 폴더 수정 모드를 직접 선택한다. CLI의 `~/.codex/config.toml`에 MCP 서버를 등록하면 Codex 패널에서 MCP 도구도 사용할 수 있다. 상세 기능과 경계는 [Codex 패널](codex.md)을 참조한다.
 
 ## 경계와 실패 처리
 
@@ -47,7 +47,7 @@ Python 검사는 Git/Python이 설치된 Linux에서 수행한다. 에디터 번
 - [Codex App Server](https://learn.chatgpt.com/docs/app-server)
 - [Codex 기기 코드 인증](https://learn.chatgpt.com/docs/auth)
 - [GitHub CLI 로그인](https://cli.github.com/manual/gh_auth_login)
-- [Codex 0.154.0 릴리스](https://github.com/openai/codex/releases/tag/rust-v0.154.0)
+- [Codex 0.157.1 릴리스](https://github.com/openai/codex/releases/tag/rust-v0.157.1)
 
 ## 검증 결과 (2026-09-14)
 

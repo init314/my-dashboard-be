@@ -1,26 +1,24 @@
 # IDE Codex 패널
 
-프로젝트 작업은 IDE에서 SSH 장비의 폴더를 열고 **Codex** 탭을 사용한다. 프로젝트 Codex CLI, 인증, 세션은 선택한 원격 SSH 계정에서 관리한다. 서버 전역 assistant는 우측 하단의 이동 가능한 ✦ 버튼에서 열고 Linux 대시보드 서버의 Codex CLI와 인증을 사용한다. 두 기능은 job 경로와 MCP 권한이 분리되어 있다. 로그인은 기기 코드 로그인을 이용한다.
+IDE에서 서버 자체 또는 등록한 SSH 장비의 작업 폴더를 열고 **Codex** 탭을 선택한다. 같은 서버 계정의 CLI 인증과 세션 저장소를 사용한다. 로그인은 메뉴의 기기 코드 로그인을 이용한다.
 
 - 모델/추론: 설치된 CLI의 model/list를 조회해 선택한다. 고정 모델 이름을 사용하지 않는다.
 - 세션: 상단 시계 버튼에서 검색·복원하고 ＋로 새 대화를 시작한다. 보관된 세션을 선택하면 보관 해제 후 연다. 메뉴에서 이름 변경·분기·보관·컨텍스트 압축을 실행한다.
 - 컨텍스트: 현재 파일, 선택 영역, 프로젝트 상대 경로, 2 MB 이하 이미지, 활성 CLI 스킬을 첨부한다. 첨부 칩의 ×로 제거한다. 선택 영역은 CodeMirror에서 선택한 내용이다. 파일 전송 전 미저장 편집은 저장해야 한다.
-- 실행: 읽기·분석 또는 파일 수정 허용을 선택하고 Enter로 전송한다. Shift Enter는 줄바꿈이다. 다음 요청은 같은 thread에 이어진다. 실행 중 입력하면 turn/steer로 추가 지시를 보낸다.
-- 승인: 명령/파일 변경 요청은 한 번 허용·세션 동안 허용·거절을 선택한다. 질문은 패널에서 답변한다. 중지는 turn/interrupt이며 하단 실행 중지는 job 강제 종료다. 이미 변경된 파일은 유지된다.
+- 실행: 기본은 전체 권한·승인 없이 실행이며 dashboard 컨테이너의 파일과 네트워크에 접근한다. 더 좁은 작업이 필요하면 작업 폴더 수정(요청 시 승인) 또는 읽기·분석을 선택한다. Enter로 전송하고 Shift Enter는 줄바꿈이다. 다음 요청은 같은 thread에 이어진다. 실행 중 입력하면 turn/steer로 추가 지시를 보낸다.
+- 승인: 제한 모드의 명령/파일 변경 요청은 한 번 허용·세션 동안 허용·거절을 선택한다. 전체 권한 모드에서는 Codex 명령 승인을 건너뛴다. 질문은 패널에서 답변한다. 중지는 turn/interrupt이며 하단 실행 중지는 job 강제 종료다. 이미 변경된 파일은 유지된다.
 - 결과: 응답, 실행 명령과 출력, 파일 diff, 계획, 토큰 사용량을 표시한다. 코드 블록을 복사할 수 있다. 변경 사항 리뷰는 CLI review/start로 미커밋 변경을 검사한다. 모델 응답 HTML은 실행하지 않는다.
 - `/help`, `/new`, `/history`, `/compact` 명령을 지원한다. 메뉴에서 CLI에 등록된 MCP 연결 인증 상태를 확인할 수 있다.
 
-대시보드 자체 Codex는 IDE 패널과 별도의 반응형 대화 창을 사용한다. 페이지·등록 앱 열기, 일정과 노트 조회/작성만 다루며 파일·스킬 컨텍스트와 IDE 프로젝트 도구를 제공하지 않는다. 대시보드 데이터 변경 도구의 확인 질문은 대화 안에서 답한다. 모델과 추론 강도는 대시보드 assistant 전용 화면에서 선택한다. [대시보드 도우미와 MCP 도구](assistant.md).
-
-서버 assistant의 도구 준비는 Codex CLI 최신 stable 릴리스를 자동 확인한다. 확인 결과는 10분간 캐시하고, 업데이트가 적용되면 이어지는 model/list 조회에 새 모델과 지원 reasoning effort가 표시된다. GitHub 릴리스 확인이 실패하면 현재 설치 버전을 계속 쓴다. 이 자동 업데이트는 대시보드 서버에만 적용되며 프로젝트 편집기의 SSH Codex는 대상 서버에 설치된 버전을 유지한다.
-
-새 세션은 첫 메시지 전에는 화면의 draft다. 첫 turn부터 선택한 SSH 계정의 Codex 저장소에 저장한다. 화면에는 최근 50 turn을 표시한다. 마지막 대화 되돌리기는 thread/rollback으로 마지막 turn의 기록을 제거하며 파일을 되돌리지 않는다.
+새 세션은 첫 메시지 전에는 화면의 draft다. 첫 turn부터 CLI에 저장한다. 대화의 원본은 서버의 Codex 저장소이며 화면에는 최근 50 turn을 표시한다. 마지막 대화 되돌리기는 thread/rollback으로 마지막 turn의 기록을 제거하며 파일을 되돌리지 않는다.
 
 ## 구현 범위와 차이
 
-공식 [IDE 기능](https://learn.chatgpt.com/docs/codex/ide)과 [App Server](https://learn.chatgpt.com/docs/app-server)를 참고한 독립 웹 클라이언트다. VS Code 확장 바이너리/화면을 그대로 임베드한 것은 아니다. 현재 설치된 Codex App Server의 model/list 응답을 사용하며 고정 모델 이름과 추론 강도 목록을 두지 않는다.
+공식 [IDE 기능](https://learn.chatgpt.com/docs/codex/ide)과 [App Server](https://learn.chatgpt.com/docs/app-server)를 참고한 독립 웹 클라이언트다. VS Code 확장 바이너리/화면을 그대로 임베드한 것은 아니다. 설치된 Codex 0.157.1의 생성 JSON Schema와 실제 stdio 응답을 기준으로 연동한다.
 
-VS Code 전용 명령, OpenAI 클라우드 작업 위임, 확장 전용 UI 설정, 네이티브 Plan collaboration mode, 마켓플레이스 설치·OAuth 관리, 임의 permission/MCP elicitation UI는 포함하지 않는다. 마지막 종류의 미지원 서버 요청은 승인하지 않고 오류 응답으로 종료한다. reasoning은 공개 summary만 표시하며 내부 content는 보내지 않는다. API 키 직접 입력 UI와 전체 권한 우회는 제공하지 않는다.
+VS Code 전용 명령, OpenAI 클라우드 작업 위임, 확장 전용 UI 설정, 네이티브 Plan collaboration mode, 마켓플레이스 설치·OAuth 관리는 포함하지 않는다. Codex의 MCP 연결은 작업 실행 환경의 `~/.codex/config.toml`을 사용한다. MCP가 별도 상호작용/elicitation을 요구하면 현재 패널이 지원하는 요청만 처리한다. reasoning은 공개 summary만 표시하며 내부 content는 보내지 않는다. API 키 직접 입력 UI는 제공하지 않는다.
+
+Docker 실행 환경에서 전체 권한 모드는 Linux dashboard 컨테이너 내부의 파일과 네트워크를 대상으로 한다. MCP 서버는 별도 컴퓨터의 파일·터미널 등 설정된 외부 기능을 제공할 수 있고, 각 기능은 서버가 가진 인증 권한을 사용한다.
 
 ## 검증
 

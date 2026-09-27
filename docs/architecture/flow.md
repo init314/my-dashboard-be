@@ -65,9 +65,7 @@ Tailscale은 사용자 링크 승인 방식으로 인증한다. dashboard가 네
 
 ### Codex 대화
 
-SSH 장비의 프로젝트 열기 → Codex 탭 → 원격 model/list 및 account/read → 최근 thread 복원 또는 세션 목록 선택 → 파일/선택/이미지/스킬 첨부 → thread/start 또는 resume → turn/start → 스트림 표시 → 필요 시 승인/질문 응답 → turn/completed → thread/read. 서버 자체(local) 프로젝트에서 Codex 요청은 400으로 거부하고 SSH 장비를 선택하도록 안내한다. 전송 전 미저장 편집을 막는다. 첫 메시지 전 새 세션은 draft다. 다른 cwd의 thread 작업은 403. 자동 모델 호출 재시도는 하지 않는다.
-
-전역 Codex assistant: 플로팅 버튼 열기 → server-local setup/MCP 연결 및 계정·모델 확인 → 사용자 turn을 assistant job으로 실행 → MCP tools/call로 페이지 이동·일정·노트 작업 → app-server usage/item/interaction 이벤트를 채팅에 표시 → navigation queue를 브라우저가 polling해 내부 페이지 또는 등록 앱을 연다. 프로젝트 편집기 job endpoint는 사용하지 않는다. 로그인 만료, 설치 오류와 MCP 도구 오류는 채팅 상태로 표시하고 삭제·셸 도구는 제공하지 않는다.
+프로젝트 열기 → Codex 탭 → model/list 및 account/read → 최근 thread 복원 또는 세션 목록 선택 → 파일/선택/이미지/스킬 첨부 → thread/start 또는 resume → turn/start → 스트림 표시 → 필요 시 승인/질문 응답 → turn/completed → thread/read. 전송 전 미저장 편집을 막는다. 첫 메시지 전 새 세션은 draft다. 다른 cwd의 thread 작업은 403. 자동 모델 호출 재시도는 하지 않는다.
 
 장비 네트워크 선택과 점프 장비 순서 지정 → 저장/SSH 등록의 호스트 키 확인에도 동일한 점프 체인 적용 → 각 장비의 networkMode가 TAILSCALE이면 공유 tailscale0 인터페이스 주소 확인 및 Tailscale 주소 해석 → 첫 점프 장비부터 SSH 호스트 키 검증·인증 → 각 점프 장비에서 Direct-TCPIP 채널로 다음 주소에 연결 → 대상 장비 호스트 키 검증·인증 → SFTP/터미널/원격 어댑터 연결. TAILSCALE 브릿지 뒤의 DIRECT 목표는 Tailscale 확인 없이 브릿지에서 목표 주소를 해석·연결한다. 점프 체인은 최대 5개이며 어느 홉이라도 실패하면 전체 연결을 실패시킨다. 실패 시 기본 네트워크로 재시도하지 않는다. SSH 재등록에서 jumpDeviceIds 생략/null은 기존 체인을 유지하고 빈 배열은 직접 연결을 지정한다. 프로필 변경 전 열린 실행 세션은 생성 당시 설정을 유지하므로 새 연결로 적용한다.
 
@@ -86,3 +84,11 @@ Tailscale 로그인: 설정 열기 → OWNER 상태 조회 → 로그인 시작(
 클라우드 파일 열기 → 전용 에디터 화면 → 텍스트 편집/이미지 열람 또는 다운로드. 저장 성공 후 내용이 동일한 경우에만 새 revision을 채택한다. 저장 실패는 편집 내용을 유지하고 복귀 시 미저장 변경을 확인한 뒤 목록을 다시 조회한다.
 
 메모장: 조직 폴더 → 프로젝트 폴더 → 템플릿 선택/문서 생성 → 블록 편집 → 1초 자동 저장 또는 저장 버튼 → OWNER/CSRF → 블록/계층 검증 → revision 조건부 UPDATE → 새 revision 반영. 실패 시 편집 버퍼와 현재 문서를 유지하며 강제 덮어쓰기를 하지 않는다. 새로고침 전 미저장 내용을 확인한다. 이미지 업로드는 형식/크기 검증 후 문서 FK로 DB에 저장하며 문서 삭제와 함께 제거한다. 비어 있지 않은 폴더 삭제는 409다. [자세히](../notes.md).
+
+## 홈 AI 비서
+
+홈 표시 → 전용 폴더 준비와 오늘 일정 GET → 저장된 CLI 인증으로 모델·계정·이전 대화 자동 조회 → 사용자의 도구 준비/로그인/연결 확인 또는 명령 전송 → OWNER·CSRF·허용 action 검증 → 서버가 local/.assistant/danger-full-access와 내부 MCP 연결 지정 → 세션 소유 job 실행 → App Server/MCP 이벤트를 폴링해 대화 표시 → 다운로드·출처 링크를 DOM으로 제공한다. 홈 표시만으로 설치·기기 코드 로그인이나 유료 turn을 실행하지 않는다. 유효한 인증이 있으면 로그인 요청은 기기 코드 인증 없이 성공하며 인증이 없을 때만 사용자가 공식 로그인 절차를 진행한다.
+
+일정·파일 등 제어 요청은 MCP → 기존 인증 API → 기능 service → repository/adapter 순서다. 변경 요청은 같은 세션의 홈 CSRF meta 조회 → CSRF 헤더를 포함한 JSON 또는 multipart 전송 → 기존 검증 → 결과 확인 순서다. 코드 요청은 dashboard_context → 실제 저장소 규칙·계약 읽기 → 마운트된 소스 수정 → 테스트/빌드 → 요청된 운영 반영 시 호스트 MCP 재배포 순서다. 세션 만료·로그아웃은 기존 Studio 수명 정리로 실행을 종료한다. 빈 목록과 실패는 실제 상태를 반환하고 자동 실행 재시도는 없다. 응답을 확인하지 못한 변경은 다시 조회해 적용 여부를 확인한다. 추가 입력은 steer, 대화 중지는 interrupt, 준비/로그인 중지는 DELETE job이다. 홈/전체 화면 전환은 대화를 유지한다.
+
+홈의 SENTIS 로딩은 기존 모델·계정·MCP 조회를 사용하고 계정 스냅샷을 사용량 카드로 전달한다. 유휴 30초 폴링은 별도 job을 읽어 대화 진행·입력을 방해하지 않는다. 오류는 이전 사용량과 갱신 지연으로 표시한다. 카운트다운 표시와 테마는 [디자인](../design.md)을 따른다.

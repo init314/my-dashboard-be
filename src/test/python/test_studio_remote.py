@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('remote', Path(__file__).parents[2] / 'main/resources/studio/remote.py')
 remote = importlib.util.module_from_spec(spec)
@@ -19,6 +20,16 @@ class RemoteWorkspaceTest(unittest.TestCase):
 
     def call(self, action, **args):
         return remote.handle(dict(base=str(self.root), root=str(self.root), action=action, args=args))
+
+    def test_cached_login_skips_device_auth(self):
+        with patch.object(remote, 'run', return_value=(0, b'')) as run:
+            self.assertEqual(self.call('codex-login'), dict(authenticated=True))
+            run.assert_called_once_with(['codex', 'login', 'status'], check=False)
+
+    def test_missing_login_starts_device_auth(self):
+        with patch.object(remote, 'run', side_effect=[(1, b''), (0, b'')]) as run:
+            self.assertEqual(self.call('codex-login'), dict(authenticated=True))
+            self.assertEqual(run.call_args_list[1].args[0], ['codex', 'login', '--device-auth'])
 
     def test_atomic_utf8_edit_and_conflict(self):
         self.call('create', path='한글 file.py')

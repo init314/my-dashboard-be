@@ -7,7 +7,8 @@
   function publish(detail){studioSummary={...studioSummary,...detail};window.dispatchEvent(new CustomEvent('studio-state',{detail:studioSummary}));}
   const root = document.querySelector('#studio');
   const $ = selector => root.querySelector(selector);
-  let activePanel = 'git';
+  let activePanel = 'codex';
+  let workbenchOpen = false;
   const labels = {'setup':'원격 도구 준비','list':'폴더 읽기','read':'파일 열기','save':'파일 저장','git-status':'Git 변경 확인','codex-run':'Codex 작업','codex-login':'Codex 로그인'};
   const escape = value => ui.escape(value);
 
@@ -19,9 +20,9 @@
 <div class="ui-splitter" data-resize="explorer" role="separator" tabindex="0" aria-label="탐색기 너비" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="480" aria-valuenow="200"></div>
 <section class="studio-editor"><div id="studio-file-tabs" role="tablist" aria-label="열린 파일"></div><div class="studio-toolbar"><span id="studio-file-label">파일을 선택하세요</span><button class="ghost sm" data-studio="reload-file" aria-label="서버에서 파일 다시 읽기" data-tooltip="서버에서 다시 읽기">↻</button><button class="primary sm" data-studio="save">저장 <kbd>Ctrl S</kbd></button></div><div class="studio-code-area"><div id="studio-code" aria-label="코드 편집기"></div><div id="studio-empty"><span>⌘</span><h2>파일을 열어 시작하세요</h2><p>Files에서 파일을 선택하거나 새 파일을 만드세요.</p><small>저장 Ctrl S · 검색 Ctrl F</small></div></div><div class="studio-editor-foot"><span id="studio-dirty">UTF-8</span><span>검색 Ctrl F · 실행 취소 Ctrl Z</span></div></section>
 <div class="ui-splitter" data-resize="inspector" role="separator" tabindex="0" aria-label="보조 패널 너비" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="480" aria-valuenow="320"></div>
-<aside class="studio-inspector"><div class="studio-panel-tabs" role="tablist" aria-label="개발 도구"><button data-studio-panel="git" class="active" role="tab" aria-selected="true">⑂ Git</button><button data-studio-panel="codex" role="tab" aria-selected="false">✦ Codex</button></div>
-<section id="studio-git"><div class="studio-toolbar"><b id="studio-branch">소스 관리</b><button class="icon-btn" data-studio="git-refresh" aria-label="Git 새로고침">↻</button><details class="ui-menu"><summary aria-label="저장소 설정">⋯</summary><div class="ui-menu-content"><button data-studio="git-init">저장소 초기화</button><button data-studio="git-clone">저장소 복제</button><button data-studio="git-identity">커밋 작성자</button><button data-studio="git-remote">원격 저장소</button><button data-studio="git-branch">새 브랜치</button><button data-studio="github-login">GitHub 로그인</button><button data-studio="github-status" id="studio-github-auth">GitHub 인증 확인</button></div></details></div><label class="studio-branch-select">브랜치<select id="studio-branches"><option>—</option></select></label><div class="studio-git-actions"><button data-studio="git-fetch">Fetch</button><button data-studio="git-pull">Pull</button><button data-studio="git-push">Push</button></div><form id="studio-commit"><textarea id="studio-commit-message" placeholder="변경 내용을 요약하세요" aria-label="커밋 메시지" maxlength="4000" required rows="2"></textarea><button type="submit" class="primary">커밋</button></form><div id="studio-changes"></div><details class="studio-history"><summary>최근 커밋</summary><pre id="studio-history"></pre></details></section>
-<section id="studio-codex" hidden></section></aside></div>
+<aside class="studio-inspector"><div class="studio-panel-tabs" role="tablist" aria-label="개발 도구"><button data-studio-panel="git" role="tab" aria-selected="false">⑂ Git</button><button data-studio-panel="codex" class="active" role="tab" aria-selected="true">✦ Codex</button></div>
+<section id="studio-git" hidden><div class="studio-toolbar"><b id="studio-branch">소스 관리</b><button class="icon-btn" data-studio="git-refresh" aria-label="Git 새로고침">↻</button><details class="ui-menu"><summary aria-label="저장소 설정">⋯</summary><div class="ui-menu-content"><button data-studio="git-init">저장소 초기화</button><button data-studio="git-clone">저장소 복제</button><button data-studio="git-identity">커밋 작성자</button><button data-studio="git-remote">원격 저장소</button><button data-studio="git-branch">새 브랜치</button><button data-studio="github-login">GitHub 로그인</button><button data-studio="github-status" id="studio-github-auth">GitHub 인증 확인</button></div></details></div><label class="studio-branch-select">브랜치<select id="studio-branches"><option>—</option></select></label><div class="studio-git-actions"><button data-studio="git-fetch">Fetch</button><button data-studio="git-pull">Pull</button><button data-studio="git-push">Push</button></div><form id="studio-commit"><textarea id="studio-commit-message" placeholder="변경 내용을 요약하세요" aria-label="커밋 메시지" maxlength="4000" required rows="2"></textarea><button type="submit" class="primary">커밋</button></form><div id="studio-changes"></div><details class="studio-history"><summary>최근 커밋</summary><pre id="studio-history"></pre></details></section>
+<section id="studio-codex"></section></aside></div>
 <details class="studio-output" aria-label="작업 결과"><summary class="studio-toolbar"><b id="studio-job-status" role="status">작업 폴더를 열어 주세요</b><button data-studio="cancel" class="danger sm" hidden>실행 중지</button></summary><div id="studio-events" aria-live="polite"></div><pre id="studio-diff" hidden></pre></details>`;
     const folderInput=$('#studio-root');
     folderInput.placeholder='목록에서 작업 폴더를 검색하세요';
@@ -69,7 +70,6 @@
   async function execute(action, args = {}, context = project) {
     if(busy) throw new Error('진행 중인 작업이 끝난 뒤 실행해 주세요.');
     if(!context) throw new Error('먼저 작업 폴더를 열어 주세요.');
-    if(action.startsWith('codex-')&&context.deviceId==='local') throw new Error('프로젝트 Codex는 SSH 원격 장비를 선택해 사용하세요. 서버 Codex assistant는 우측 하단의 ✦ 버튼에서 열 수 있습니다.');
     setBusy(true); $('#studio-diff').hidden=true; $('#studio-events').replaceChildren();$('#studio-job-status').classList.remove('form-error');
     let responseCard;
     if(action.startsWith('codex-')&&action!=='codex-status'){
@@ -114,9 +114,9 @@
     await execute('setup',{},context);
     const listing=await execute('list',{path:'.'},context);
     project={...context,root:listing.root};currentPath='.';documents.clear();directories.clear();expanded.clear();expanded.add('.');activeFile=null;authKnown=false;studioSummary={};publish({codex:'대기 중'});$('#studio-context').textContent=project.root;updateAuth(null);codex.reset();
-    $('.studio-connection').textContent=project.deviceId==='local'?'서버 자체 · 로컬 편집':'SSH · 원격 실행';
+    $('.studio-connection').textContent=project.deviceId==='local'?'서버 자체 · 로컬 실행':'SSH · 원격 실행';
     codeEditor.load('', '');renderTabs();
-    $('.studio-workbench').hidden=false;$('#studio-start').hidden=true;$('.studio-project-menu').open=false;$('#studio-project-name').textContent=project.root.split('/').filter(Boolean).pop()||'/';$('#studio-project-name').title=project.root;renderFiles(listing);await refreshGit();
+    $('.studio-workbench').hidden=false;$('#studio-start').hidden=true;workbenchOpen=true;$('.studio-project-menu').open=false;$('#studio-project-name').textContent=project.root.split('/').filter(Boolean).pop()||'/';$('#studio-project-name').title=project.root;renderFiles(listing);await refreshGit();
     try {localStorage.setItem('workspace-studio-project-v1',JSON.stringify(project));}catch{}publish({root:project.root});if(activePanel==='codex')await codex.load();
   }
   function renderFiles(listing) {
@@ -204,7 +204,7 @@
   }
   async function onClick(event) {
     const button=event.target.closest('button');if(!button)return;
-    if(button.dataset.studioPanel) {activePanel=button.dataset.studioPanel;$('.studio-workbench').dataset.mobilePane='inspector';$('#studio-git').hidden=activePanel!=='git';$('#studio-codex').hidden=activePanel!=='codex';root.querySelectorAll('[data-studio-panel]').forEach(item=>{item.classList.toggle('active',item===button);item.setAttribute('aria-selected',String(item===button));});if(activePanel==='codex')codex.load();return;}
+    if(button.dataset.studioPanel) {activePanel=button.dataset.studioPanel;if(!workbenchOpen){workbenchOpen=true;$('.studio-workbench').hidden=false;$('#studio-start').hidden=true;}$('.studio-workbench').dataset.mobilePane='inspector';$('#studio-git').hidden=activePanel!=='git';$('#studio-codex').hidden=activePanel!=='codex';root.querySelectorAll('[data-studio-panel]').forEach(item=>{item.classList.toggle('active',item===button);item.setAttribute('aria-selected',String(item===button));});if(activePanel==='codex')codex.load();return;}
     const action=button.dataset.studio, path=button.dataset.path;if(!action)return;
     await guard(async()=>{
       if(action==='open-project'){$('.studio-project-menu').open=true;$('#studio-root').focus();await refreshFolderOptions();return;}
@@ -238,6 +238,6 @@
   function updateAuth(authenticated){authKnown=authenticated!==null;$('#studio-auth').textContent=authenticated===null?'인증 확인 전':authenticated?'CLI 인증됨':'로그인 필요';$('#studio-auth-cta').hidden=authenticated!==false;root.querySelectorAll('.ui-menu [data-studio="codex-login"]').forEach(button=>button.hidden=authenticated!==false);$('[data-studio="codex-logout"]').hidden=authenticated!==true;}
   window.WorkspaceStudio={
     init(helpers){ui=helpers;renderShell();},
-    async open(id){if(id!=='studio')return;const state=await ui.api('/workspace');const selected=$('#studio-device').value;$('#studio-device').innerHTML=[...state.devices].sort((a,b)=>Number(b.id==='local')-Number(a.id==='local')).map(device=>`<option value="${escape(device.id)}" data-root="${escape(device.rootPath)}">${device.id === 'local' ? '서버 자체' : escape(device.name)+' · '+escape(device.host)+(device.networkMode==='TAILSCALE'?' · Tailscale':'')}</option>`).join('');if(selected)$('#studio-device').value=selected;if(!$('#studio-root').value){let saved;try{saved=JSON.parse(localStorage.getItem('workspace-studio-project-v1'));}catch{}if(saved && state.devices.some(device=>device.id===saved.deviceId)){$('#studio-device').value=saved.deviceId;$('#studio-root').value=saved.root;}else $('#studio-root').value=$('#studio-device').selectedOptions[0]?.dataset.root || '';}}
+    async open(id){if(id!=='studio')return;activePanel='codex';const state=await ui.api('/workspace');const selected=$('#studio-device').value;$('#studio-device').innerHTML=[...state.devices].sort((a,b)=>Number(b.id==='local')-Number(a.id==='local')).map(device=>`<option value="${escape(device.id)}" data-root="${escape(device.rootPath)}">${device.id === 'local' ? '서버 자체' : escape(device.name)+' · '+escape(device.host)+(device.networkMode==='TAILSCALE'?' · Tailscale':'')}</option>`).join('');if(selected)$('#studio-device').value=selected;root.querySelectorAll('[data-studio-panel]').forEach(item=>{const active=item.dataset.studioPanel==='codex';item.classList.toggle('active',active);item.setAttribute('aria-selected',String(active));});$('#studio-git').hidden=true;$('#studio-codex').hidden=false;if(!$('#studio-root').value){let saved;try{saved=JSON.parse(localStorage.getItem('workspace-studio-project-v1'));}catch{}if(saved && state.devices.some(device=>device.id===saved.deviceId)){$('#studio-device').value=saved.deviceId;$('#studio-root').value=saved.root;}else $('#studio-root').value=$('#studio-device').selectedOptions[0]?.dataset.root || '';}}
   };
 })();

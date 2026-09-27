@@ -1,0 +1,73 @@
+/* SENTIS visual language: restrained cyan light, instrument lines and opaque reading surfaces. */
+body .main>.content{background-color:var(--bg-app);background-image:linear-gradient(var(--hud-grid) 1px,transparent 1px),linear-gradient(90deg,var(--hud-grid) 1px,transparent 1px);background-size:40px 40px}
+body .launcher-home{background:radial-gradient(ellipse at 90% 0%,var(--hud-glow),transparent 50%);padding-top:26px}
+.main .launcher-head{margin-bottom:22px;align-items:center}
+.main .launcher-head h1{font:600 clamp(18px,2vw,28px)/1.2 var(--font-mono);letter-spacing:.07em}
+.main .launcher-head .eyebrow{font:10px var(--font-mono);letter-spacing:.17em;color:var(--text-secondary);margin-bottom:8px}
+.hud-title-mark{color:var(--accent)}
+.hud-section-label{display:flex;align-items:center;gap:14px;margin:26px 0 16px;font:10px var(--font-mono);letter-spacing:.13em;color:var(--text-secondary)}
+.hud-section-label::after{content:'';height:1px;flex:1;background:linear-gradient(90deg,var(--border-default),transparent)}
+.hud-section-label>span:last-child{color:var(--text-muted);font:11px var(--font-ui);letter-spacing:0}
+body .os-statusbar,body .os-tools,body .os-navigation{background:var(--bg-sidebar);border-color:var(--border-subtle)}
+.os-statusbar .home-button{font-family:var(--font-mono);color:var(--accent);letter-spacing:.12em}
+body .os-statusbar{box-shadow:0 1px 20px var(--hud-glow)}
+.main .assistant-shell{position:relative;border:1px solid var(--border-default);border-radius:5px;background:linear-gradient(120deg,var(--bg-elevated),var(--bg-surface) 45%);box-shadow:0 0 35px var(--hud-glow),inset 0 1px 0 var(--border-subtle)}
+.main .assistant-shell::before,.main .assistant-shell::after{content:'';position:absolute;top:0;width:45px;height:2px;background:var(--accent);pointer-events:none;z-index:1}
+.main .assistant-shell::before{left:0}.main .assistant-shell::after{right:0}
+.assistant-identity{display:flex;align-items:center;gap:18px;min-width:0}
+.assistant-identity>div{min-width:0}
+.assistant-heading .assistant-identity h2{font:500 28px var(--font-mono);letter-spacing:.19em;color:var(--accent);margin:0 0 3px}
+.assistant-heading .eyebrow{font:9px var(--font-mono);letter-spacing:.13em;color:var(--text-muted)}
+.main .assistant-heading{padding:18px 20px;border-bottom:0;gap:12px}
+.main .assistant-heading small{font-size:10px;line-height:1.65}
+.main .assistant-heading [data-assistant-mcp]{color:var(--success)}
+.sentis-core{position:relative;display:grid;place-items:center;width:68px;height:68px;flex-shrink:0;border-radius:50%;border:1px solid var(--border-default);background:radial-gradient(circle,var(--accent-subtle),transparent 65%);box-shadow:0 0 24px var(--hud-glow),inset 0 0 16px var(--hud-glow)}
+.sentis-core::before{content:'';position:absolute;inset:5px;border:2px dashed var(--accent);border-radius:50%;opacity:.75;animation:sentis-orbit 48s linear infinite}
+.sentis-core::after{content:'';position:absolute;inset:12px;border:1px solid var(--accent);border-left-color:transparent;border-right-color:transparent;border-radius:50%}
+.sentis-core>span{width:18px;height:18px;transform:rotate(45deg);border:2px solid var(--accent);box-shadow:0 0 15px var(--hud-glow);background:var(--accent-subtle)}
+@keyframes sentis-orbit{to{transform:rotate(360deg)}}
+.main .assistant-codex-panel{height:380px}
+.main .assistant-suggestions{padding:12px 16px 8px;gap:6px}
+.main .assistant-suggestions button{border-radius:3px;border-color:var(--border-subtle);background:var(--bg-app);font-size:11px;padding:3px 12px;min-height:28px}
+.main .assistant-suggestions button:hover{border-color:var(--accent);color:var(--accent)}
+.main .assistant-welcome{min-height:100px;gap:5px}
+.main .assistant-welcome>span{font-size:22px;text-shadow:0 0 22px var(--accent)}
+.main .assistant-welcome h3{font-size:18px;font-weight:500;margin:3px 0}
+.main .assistant-welcome p{font-size:12px;color:var(--text-muted);margin:0}
+.main #assistant-studio-prompt-form{border-radius:4px;border-color:var(--border-default);background:var(--bg-app)}
+.main #assistant-studio-prompt-form:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--hud-glow)}
+.main .assistant-sidebar{background:var(--bg-app);border-left-color:var(--border-subtle)}
+.main .assistant-sidebar h3::before{content:'// ';font-family:var(--font-mono);color:var(--accent)}
+.main .panel,.main .device-card,.main .home-item.widget,.main .cloud-items,.main .studio-workbench{border-radius:4px;border-color:var(--border-subtle)}
+.main .panel-head,.main .page-head,.main .studio-head{border-color:var(--border-subtle)}
+.main .page-head h1,.main .studio-head h1{letter-spacing:.025em}
+.main .panel-head h2::before{content:'// ';font-family:var(--font-mono);color:var(--accent)}
+.main .home-widget{background:linear-gradient(130deg,var(--bg-elevated),var(--bg-surface));border-radius:4px}
+.main .widget-head{border-bottom:1px solid var(--border-subtle);padding-bottom:8px}
+.main .launcher-shortcut .launcher-icon{border-radius:8px;background:linear-gradient(145deg,var(--bg-elevated),var(--bg-app));border:1px solid var(--border-default);color:var(--accent);box-shadow:inset 0 1px 0 var(--hud-glow)}
+.main .launcher-shortcut:hover .launcher-icon{border-color:var(--accent);box-shadow:0 0 16px var(--hud-glow)}
+.main .launcher-dock{background:var(--bg-sidebar);border-radius:8px;border:1px solid var(--border-default);box-shadow:0 0 22px var(--hud-glow),var(--shadow)}
+.main .launcher-dock .launcher-icon{border:0;background:transparent;box-shadow:none}
+.main .launcher-label{color:var(--text-secondary)}
+body .dialog,body .editor-dialog{border-radius:6px;border:1px solid var(--border-default)}
+body button,body .button,body input,body select,body textarea{border-radius:4px}
+body button.primary,body .button.primary{box-shadow:0 0 16px var(--hud-glow)}
+.main .notes-sidebar,.main .cloud-sidebar,.main .studio-explorer,.main .studio-inspector{background:var(--bg-sidebar)}
+.main .notes-tree-row.active,.main .studio-file-row.selected{box-shadow:inset 2px 0 0 var(--accent)}
+.main .studio-toolbar,.main .notes-toolbar,.main .cloud-toolbar{border-color:var(--border-subtle)}
+.main .os-tools button:hover{color:var(--accent)}
+.main #assistant .assistant-codex-panel{height:auto;min-height:240px}
+.main #assistant .assistant-shell{overflow:auto}
+@media(max-width:700px){
+ body .launcher-home{padding:18px 12px 150px}.main .launcher-head{margin-bottom:16px;gap:6px}.main .launcher-head h1{font-size:17px;letter-spacing:.02em}.main .launcher-head .eyebrow{font-size:8px;letter-spacing:.08em}
+ .main .assistant-heading{padding:12px;align-items:flex-start;gap:8px}.assistant-identity{gap:10px}.sentis-core{width:42px;height:42px}.sentis-core::before{inset:3px;border-width:1px}.sentis-core::after{inset:8px}.sentis-core>span{width:12px;height:12px}
+ .assistant-heading .assistant-identity h2{font-size:21px;letter-spacing:.1em}.main .assistant-heading small{font-size:9px}.main .assistant-heading .actions{max-width:115px;gap:4px}.main .assistant-heading button{font-size:10px;padding:3px 6px;min-height:26px}
+ .main .assistant-codex-panel{height:380px}.main .assistant-suggestions{padding:10px 12px 6px;gap:5px}.main .assistant-suggestions button{font-size:10px;padding:3px 7px}.main .assistant-welcome h3{font-size:16px}.main .assistant-welcome p{font-size:11px}
+ .main .launcher-dock{border-radius:8px}.hud-section-label{font-size:9px;gap:10px}
+ .main #assistant .assistant-shell{height:100%}.main #assistant .assistant-body{min-height:300px}
+}
+@media(prefers-reduced-motion:reduce){.sentis-core::before{animation:none}.cx-gauge-track>span{transition:none}}
+
+body.login-page{background-image:radial-gradient(ellipse at 50% 35%,var(--hud-glow),transparent 60%),linear-gradient(var(--hud-grid) 1px,transparent 1px),linear-gradient(90deg,var(--hud-grid) 1px,transparent 1px);background-size:auto,40px 40px,40px 40px}
+.login-page .login-card{border-color:var(--border-default);box-shadow:0 0 45px var(--hud-glow);background:var(--bg-surface)}
+.login-card .sentis-core{margin-bottom:24px}.login-card .eyebrow{font-family:var(--font-mono);color:var(--accent)}

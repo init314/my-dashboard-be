@@ -34,7 +34,7 @@ const tick=()=>new Promise(resolve=>setTimeout(resolve,25));
 const click=selector=>{const button=d.querySelector(selector);assert.ok(button,selector);button.click();};
 (async()=>{
  w.eval(fs.readFileSync(path.join(root,'src/main/resources/static/js/studio-panels.js'),'utf8'));
- w.eval(fs.readFileSync(path.join(root,'src/main/resources/static/js/studio-codex.js'),'utf8'));
+ w.eval(fs.readFileSync(path.join(root,'src/main/resources/static/js/codex-usage.js'),'utf8'));w.eval(fs.readFileSync(path.join(root,'src/main/resources/static/js/studio-codex.js'),'utf8'));
  w.eval(fs.readFileSync(path.join(root,'src/main/resources/static/js/studio.js'),'utf8'));
  w.WorkspaceStudio.init({api,escape:value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),toast:text=>notices.push(text),editor:(title,html,submit)=>{d.querySelector('#editor-fields').innerHTML=html;d.querySelector('#editor-dialog').open=true;dialogSubmit=submit;},openTerminal:async()=>{}});
  await w.WorkspaceStudio.open('studio');

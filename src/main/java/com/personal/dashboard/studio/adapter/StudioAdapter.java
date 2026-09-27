@@ -1,7 +1,6 @@
 package com.personal.dashboard.studio.adapter;
 
 import com.fasterxml.jackson.databind.*;
-import com.personal.dashboard.assistant.service.McpAccess;
 import com.personal.dashboard.catalog.entity.DeviceRecord;
 import com.personal.dashboard.global.WorkspaceException;
 import com.personal.dashboard.global.integration.SshAdapter;
@@ -33,19 +32,28 @@ public class StudioAdapter {
       AssistantDto.Event assistant,
       Long sequence) {}
 
+  /** Internal loopback connection; its credential is intentionally excluded from toString. */
+  public record AssistantConnection(String baseUrl, String sessionCookie) {
+    @Override
+    public String toString() {
+      return "AssistantConnection[redacted]";
+    }
+  }
+
   private final SshAdapter ssh;
   private final ObjectMapper json;
-  private final McpAccess mcpAccess;
   private final String program;
   private final String bootstrap;
 
-  public StudioAdapter(SshAdapter ssh, ObjectMapper json, McpAccess mcpAccess) throws IOException {
+  public StudioAdapter(SshAdapter ssh, ObjectMapper json) throws IOException {
     this.ssh = ssh;
     this.json = json;
-    this.mcpAccess = mcpAccess;
     program =
         resource("remote.py")
             .replace("# CODEX_BRIDGE", resource("codex_bridge.py"))
+            .replace(
+                "# ASSISTANT_MCP",
+                "ASSISTANT_MCP_PROGRAM = " + json.writeValueAsString(resource("assistant_mcp.py")))
             .replace("# LOGS_BRIDGE", resource("logs.py"));
     bootstrap = resource("bootstrap.sh");
   }
@@ -118,28 +126,30 @@ public class StudioAdapter {
 
   public void execute(
       DeviceRecord device, Request request, Execution execution, Consumer<Message> output) {
-    if (device.id().equals("local") && request.action().startsWith("codex-"))
-      throw new WorkspaceException(400, "프로젝트 Codex는 등록한 SSH 원격 장비에서 실행합니다.");
-    executeForDevice(device, request, execution, output);
+    executeProgram(device, request, execution, output, null);
   }
 
-  /** Runs the separate server-hosted assistant CLI; project editor jobs cannot use this path. */
   public void executeAssistant(
-      DeviceRecord device, Request request, Execution execution, Consumer<Message> output) {
-    if (!device.id().equals("local")
-        || !(request.action().equals("setup") || request.action().startsWith("codex-")))
-      throw new WorkspaceException(400, "서버 Codex는 assistant 전용 작업만 실행할 수 있습니다.");
-    executeForDevice(device, request, execution, output);
+      DeviceRecord device,
+      Request request,
+      Execution execution,
+      Consumer<Message> output,
+      AssistantConnection connection) {
+    executeProgram(device, request, execution, output, connection);
   }
 
-  private void executeForDevice(
-      DeviceRecord device, Request request, Execution execution, Consumer<Message> output) {
+  private void executeProgram(
+      DeviceRecord device,
+      Request request,
+      Execution execution,
+      Consumer<Message> output,
+      AssistantConnection connection) {
     String encoded = Base64.getEncoder().encodeToString(program.getBytes(StandardCharsets.UTF_8));
     String python =
         "exec python3 -u -c 'import base64;exec(base64.b64decode(\"" + encoded + "\"))'";
     String command = (request.action().equals("setup") ? bootstrap + "\n" : "") + python;
     if (device.id().equals("local")) {
-      executeLocal(device, request, execution, output, command);
+      executeLocal(device, request, execution, output, command, connection);
       return;
     }
     try (var client = ssh.connect(device)) {
@@ -148,7 +158,13 @@ public class StudioAdapter {
       try (var session = client.startSession();
           var remote = session.exec(command)) {
         exchange(
-            device, request, remote.getOutputStream(), remote.getInputStream(), execution, output);
+            device,
+            request,
+            remote.getOutputStream(),
+            remote.getInputStream(),
+            execution,
+            output,
+            connection);
       }
     } catch (WorkspaceException exception) {
       throw exception;
@@ -162,7 +178,8 @@ public class StudioAdapter {
       Request request,
       Execution execution,
       Consumer<Message> output,
-      String command) {
+      String command,
+      AssistantConnection connection) {
     if (!System.getProperty("os.name").equalsIgnoreCase("Linux"))
       throw new WorkspaceException(400, "서버 자체 IDE는 Linux에서 실행됩니다. Docker로 대시보드를 실행해 주세요.");
     try {
@@ -174,12 +191,16 @@ public class StudioAdapter {
           .environment()
           .keySet()
           .removeIf(key -> !Set.of("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR").contains(key));
-      builder.environment().put("DASHBOARD_MCP_TOKEN", mcpAccess.token());
-      builder.environment().put("DASHBOARD_MCP_URL", mcpAccess.url());
       var process = builder.start();
       execution.attach(process);
       exchange(
-          device, request, process.getOutputStream(), process.getInputStream(), execution, output);
+          device,
+          request,
+          process.getOutputStream(),
+          process.getInputStream(),
+          execution,
+          output,
+          connection);
     } catch (WorkspaceException exception) {
       throw exception;
     } catch (Exception exception) {
@@ -203,13 +224,14 @@ public class StudioAdapter {
       OutputStream inputStream,
       InputStream outputStream,
       Execution execution,
-      Consumer<Message> output)
+      Consumer<Message> output,
+      AssistantConnection connection)
       throws IOException {
     var input = json.createObjectNode();
-    input.put("deviceId", device.id());
     input.put("base", device.rootPath());
     input.put("root", request.root());
     input.put("action", request.action());
+    if (connection != null) input.set("assistant", json.valueToTree(connection));
     input.set(
         "args",
         request.args() == null ? json.createObjectNode() : json.valueToTree(request.args()));

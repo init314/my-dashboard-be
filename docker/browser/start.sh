@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 mkdir -p /home/browser/profile
+# A container restart can leave Chromium's profile lock symlinks behind in the
+# persistent volume. No Chromium process from the previous container survives.
+rm -f /home/browser/profile/SingletonLock \
+    /home/browser/profile/SingletonSocket \
+    /home/browser/profile/SingletonCookie
 # Shared dashboard networking must not expose the unauthenticated desktop/CDP ports.
 browser_bind=0.0.0.0
 vnc_local_only=no

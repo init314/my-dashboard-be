@@ -66,11 +66,7 @@ Sidebar와 대시보드형 Home을 앱/폴더/위젯/페이지/Dock/Drawer 구�
 
 ### IDE Codex 통신
 
-StudioController → StudioService(OWNER/HTTP 세션·수명·크기 제한, Codex는 SSH 장비만 허용) → StudioAdapter(고정 helper와 stdin 입력) → 원격 codex_bridge.py → 해당 SSH 계정의 Codex App Server stdio. Codex CLI, 인증과 thread 저장소는 선택한 원격 장비에 둔다. 서버 자체(local) helper는 파일/Git 작업만 수행하고 Codex 작업을 거절한다. App Server 포트는 열지 않는다. SQLite 모델은 추가하지 않는다. 승인 응답은 동일 job의 stdin으로 전달한다.
-
-### 서버 Codex assistant와 MCP
-
-AssistantController → StudioService의 assistant job 경계 → StudioAdapter의 server-local Codex process → Codex App Server stdio. 앱 assistant UI는 IDE Codex UI를 재사용하지 않고 기존 API와 MCP 기능을 사용한다. AssistantMcpService가 allowlisted route/app, 일정, 노트 도구를 기존 feature service로 전달하며 대화 이벤트와 사용자 확인 요청은 브라우저에서 표시한다. AssistantEvents는 MCP navigation 결과를 브라우저 polling queue로 전달한다. MCP token은 env 설정값 또는 프로세스 부팅 시 생성한 임시 값이며 SQLite에 저장하지 않는다.
+StudioController → StudioService(OWNER/HTTP 세션·수명·크기 제한) → StudioAdapter(고정 helper와 stdin 입력) → codex_bridge.py → Codex App Server stdio. 로컬/SSH가 같은 경로를 사용한다. App Server 포트는 열지 않는다. CLI thread 저장소가 대화 원본이며 SQLite 모델은 추가하지 않는다. 승인 응답은 동일 job의 stdin으로 전달한다.
 
 장비의 NetworkMode는 DIRECT/TAILSCALE이다. SshAdapter와 RemoteAdapter는 주입된 DeviceNetworkAdapter를 사용하고, 원격 브라우저·단순 포트 상태 조회는 CatalogService.connectionHost를 통해 같은 adapter를 사용한다. 네트워크/DNS 처리는 controller나 UI에서 수행하지 않는다. TAILSCALE은 tailscale0에 tailnet 주소가 존재하는지 확인한 뒤 3초 이내 DNS 결과 중 tailnet 주소만 선택하여 숫자 IP로 접속한다. 일반 주소 fallback은 없다. 장비는 최대 5개의 등록 점프 장비 ID를 순서대로 저장할 수 있으며 SshAdapter가 각 홉에 SSH 인증·호스트 키 검증 후 Direct-TCPIP 채널로 다음 홉을 연결한다. 점프 장비의 점프 체인 중첩은 차단한다. CLI 로그인 상태 저장이나 LocalAPI 노출은 추가하지 않는다.
 
@@ -80,9 +76,15 @@ TailscaleService는 OWNER 검증 후 전용 TailscaleAdapter를 통해 loopback 
 
 클라우드 드라이브는 cloud/controller → cloud/service(OWNER 및 실패 변환) → cloud/adapter/CloudStorage(검증된 전용 디스크 작업)로 분리한다. 사용자 가상 경로는 CLOUD_ROOT/files 하위에만 매핑하며 기존 SSH 파일 탐색과 독립한다. 업로드/복사는 staging을 거쳐 게시하고 파일시스템 변경은 단일 adapter 잠금으로 직렬화한다. 다운로드는 열린 InputStream으로 전달하고 ZIP은 스트림 종료 시 임시 파일을 정리한다. TrashRecord는 내부 저장 모델, CloudDto는 HTTP 모델이다. [저장·한도](../cloud-drive.md).
 
-NAS는 Compose의 Samba 컨테이너가 dashboard와 network namespace를 공유하고 기존 `dashboard-data` 볼륨 중 `cloud/files` subpath만 읽고 쓴다. 이는 dashboard namespace 안의 Tailscale 주소로도 SMB 연결이 가능하게 한다. 웹 드라이브는 CloudStorage를 통해 같은 파일 디렉터리를 사용한다. Samba 계정과 Spring 파일 owner는 UID/GID 10001을 공유하며 SMB1/guest/NetBIOS/프린터 공유는 비활성화한다. 호스트 TCP 445는 운영자가 지정한 주소에만 게시한다. 파일 공유 protocol은 Samba가 담당한다. [상세](../nas.md).
+NAS는 nas/controller/DavServlet → nas/service/DavService → cloud/adapter/CloudStorage를 경유한다. DavXml은 제한된 XML 파싱·생성을 담당한다. DavLocks의 일시적 잠금 상태를 CloudStorage도 검사하여 웹과 WebDAV 쓰기 충돌을 방지한다. 별도 Basic 보안 체인과 서블릿을 사용하며 기존 세션 API와 분리한다. DB 스키마 변경 없이 기존 영구 드라이브를 공유한다. [상세](../nas.md).
 
 원격 자동 구성은 DesktopSetupController → DesktopSetupService → DesktopSetupAdapter → 검증된 SSH의 고정 setup.py 순서로 실행한다. RemoteAdapter는 관리된 VNC만 SSH loopback 터널로 guacd에 연결하며, 기존 직접 연결은 유지한다. [지원 환경과 수명](../remote-desktop.md).
 
 ## 메모장
 notes/controller → notes/service → notes/repository → SQLite. 기존 계정·CSRF·DB를 재사용하며 문서/이미지는 대시보드 안에 저장한다. notes.js가 탐색과 API 흐름을 담당하고 React/BlockNote 번들은 에디터 영역에만 마운트한다. 런타임 외부 에디터 서비스·CDN 연동은 없다. [사용법](../notes.md).
+
+## 홈 AI 비서
+
+assistant/controller → assistant/service → studio/service → studio/adapter → 고정 Python helper → Codex App Server stdio. assistant/adapter/AssistantWorkspaceAdapter는 local 파일 루트 하위 실제 `.assistant` 폴더만 준비한다. 기존 IDE와 대화 cwd·DOM namespace를 분리하고 job 소유권·로그아웃 수명을 공유한다.
+
+서버가 기존 로그인 세션과 실제 loopback 포트로 프로세스 전용 dashboard_assistant stdio MCP를 구성한다. MCP는 기존 OWNER API → 각 기능 service 경계를 경유하며 상태 변경과 업로드에는 같은 세션에서 읽은 CSRF를 전송한다. 비즈니스 검증·revision 검사는 각 service가 소유한다. Compose가 실제 저장소를 `/workspace/dashboard`에 쓰기 가능하게 연결하고 MCP context가 소스·API 계약·배포 경로를 안내한다. 코드 편집은 Codex 셸, 호스트 빌드·재배포는 기존 터미널 MCP를 사용한다. 공개 웹 읽기는 MCP 전용 HTTP adapter가 공개 IP·리디렉션·HTTPS 인증서·응답 크기를 검증한다. 비서 프로세스에만 live 검색과 MCP 설정을 주입하며 config.toml·SQLite schema는 변경하지 않는다. 쿠키는 stdin/환경으로만 전달하고 공개 설정에는 환경변수 이름만 둔다. [사용·연동 범위](../assistant.md).

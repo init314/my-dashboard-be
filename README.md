@@ -1,4 +1,44 @@
-# Personal Workspace
+# SENTIS — Personal AI Dashboard
+
+**SENTIS**는 [Sharon77770/my-dashboard-be](https://github.com/Sharon77770/my-dashboard-be)의 Personal Workspace를 기반으로, 홈에서 대시보드를 제어하는 AI 비서와 사이버펑크 HUD 화면을 추가한 개인화 포크입니다. [init314](https://github.com/init314)가 사용하는 환경에 맞춰 확장했으며, 원본 프로젝트의 출처와 Git 커밋 이력을 유지합니다.
+
+## 원본과 이 포크의 차이
+
+아래 비교는 이 포크의 기반인 원본 커밋 [`9d9574e`](https://github.com/Sharon77770/my-dashboard-be/commit/9d9574e25fdd33dd4a1af3e91730cd705c19aeac)를 기준으로 합니다. 장비 관리, SSH/SFTP, 터미널, 원격 데스크톱, 파일·클라우드 드라이브, 일정·메모, Launcher와 코드 에디터의 기본 기능은 원본에서 이어받았습니다.
+
+| 영역 | 원본 Personal Workspace | SENTIS에서 추가·변경한 내용 |
+| --- | --- | --- |
+| 홈 화면 | 앱·폴더·위젯 중심 Launcher | 홈에서 바로 명령할 수 있는 SENTIS 대화창, 빠른 요청, 오늘 일정, 전체 화면 전환 |
+| AI 비서 | 코드 에디터 안의 Codex 패널 | SENTIS 전용 비서 앱과 API. 홈과 전체 화면이 같은 대화·입력 상태를 공유 |
+| 대시보드 MCP | CLI에 설정된 MCP를 IDE에서 사용 | `dashboard_assistant` MCP 12개 도구. 일정·파일 조회, 웹 문서 읽기, 기존 API 호출, 파일 업로드, 소스 접근 정보를 비서에 연결 |
+| 앱·코드 제어 | 프로젝트 중심 편집과 작업 | 기존 인증·CSRF 검사를 거쳐 일정·메모·장비·앱·설정 등을 조작. 저장소를 `/workspace/dashboard`에 연결해 코드 수정 지원 |
+| 실행 권한 | Codex 읽기·분석 기본값 | 비서는 전체 권한과 승인 없는 실행을 사용. IDE 기본값도 전체 권한으로 변경하고 제한 모드 선택은 유지 |
+| Codex 로그인 | IDE의 기기 코드 로그인 | 첫 로그인 후 서버의 인증 캐시를 재사용해 홈에서 자동 연결. 인증이 만료되거나 해제되면 다시 로그인 |
+| 사용량 표시 | 대화 토큰 안내 중심 | 계정의 실제 한도 사용률, 초기화까지 남은 시간, 현재 대화 컨텍스트를 별도 게이지로 표시 |
+| Codex 런타임 | 자동 설치 버전 `0.154.0` | `0.157.1` 공식 전체 패키지로 갱신. SHA-256 검증, 보조 실행 파일 설치와 누락 검사 |
+| 디자인 | 기존 다크·라이트 작업 공간 | SENTIS 브랜드, 청록 네온·네이비·HUD 테두리·코어 모션. 홈·앱·로그인·독에 적용하고 라이트·모바일·동작 줄이기 설정 지원 |
+| 안정성 | 기존 실행·UI 처리 | MCP 도구 발견 여부와 OAuth 지원 여부 구분, 빈 명령 출력 처리, Chromium 재시작 후 남은 프로필 잠금 정리 |
+
+사용량은 계정이 제공하는 한도만 표시합니다. 계정 한도는 유휴 상태에서 약 30초마다 조회하고 남은 시간은 매초 갱신합니다. 초기화 시각이 지나도 다음 서버 응답 전에는 사용량을 임의로 0%로 바꾸지 않으며, 데이터 미제공과 조회 실패를 구분합니다. 여기서 **남은 시간은 한도 초기화까지의 시간**이며 별도 재설정 크레딧이나 구매 기능이 아닙니다.
+
+원본 `main`에는 기준 커밋 이후 SMB NAS, 서비스 계측과 다른 비서 구현 등의 변경이 추가되었습니다. 이 포크는 현재 운영·검증한 SENTIS 버전의 파일 구성을 유지하며, 해당 후속 변경의 통합은 별도 작업입니다.
+
+### SENTIS 시작하기
+
+1. 아래 실행 절차대로 대시보드를 시작하고 로그인합니다.
+2. 홈의 **도구 준비**로 Codex 런타임을 준비한 뒤 **Codex 로그인**에서 최초 기기 코드 인증을 완료합니다. 이후에는 같은 데이터 볼륨의 인증 캐시를 재사용합니다.
+3. 홈에서 일정 확인, 파일 찾기, 앱 설정 변경, 대시보드 코드 작업을 요청합니다. 대시보드 내부 MCP는 현재 로그인 세션으로 자동 연결됩니다.
+4. 외부 MCP는 실행 서버 계정의 `~/.codex/config.toml`에 본인 환경에 맞게 설정합니다. 개인 서버 주소, 외부 서비스 계정과 인증 캐시는 이 저장소에 포함되지 않습니다.
+
+전체 권한의 실행 범위는 dashboard 컨테이너와 연결된 MCP의 권한입니다. Compose의 소스 마운트는 호스트 저장소에도 변경을 반영하며, 소스 저장 후 서비스 반영에는 빌드·재배포가 필요합니다. 기존 OWNER·세션·CSRF 인증은 유지합니다. **PHOTO TO PDF 연동은 포함하지 않습니다.**
+
+자세한 내용: [SENTIS 사용법](docs/assistant.md) · [디자인과 게이지](docs/design.md) · [비서 API](docs/api/assistant.md) · [Codex 연동](docs/codex.md) · [배포](docs/deployment.md)
+
+### 검증
+
+SENTIS 변경본은 Docker 빌드의 Python 테스트 50개, Maven 테스트 89개와 Spotless 검사를 통과했습니다. 별도 JavaScript 테스트에서 대화·사용량·Launcher·에디터·테마·반응형 동작을 확인했으며, PC·모바일 브라우저와 실제 계정의 사용량 표시도 확인했습니다. 외부 MCP의 사용 가능 여부는 배포 환경의 설정에 따라 달라집니다.
+
+## 프로젝트 기반
 
 Spring Boot 3.5.16 / Java 21 / Thymeleaf 기반 개인 대시보드입니다. 별도 프런트엔드 서버 없이 같은 애플리케이션이 화면, API, 인증, WebSocket을 제공합니다.
 
@@ -74,9 +114,6 @@ Wake는 설정한 MAC/브로드캐스트 주소로 UDP 패킷을 보냅니다. D
 | SESSION_TIMEOUT | 30m | 로그인 비활성 만료 |
 | DASHBOARD_DB_PATH | ./data/dashboard.db | SQLite 파일, Compose에서 /app/data/dashboard.db |
 | WORKSPACE_ROOT | ./data/files | 서버 파일 루트, Compose에서 /app/data/files |
-| NAS_USERNAME / NAS_PASSWORD | 없음 | dashboard 계정과 분리된 Samba 계정 |
-| NAS_SMB_HOST | 없음 | 클라이언트가 접속할 LAN/VPN 이름 또는 IP |
-| NAS_SMB_BIND_ADDRESS | 없음 | TCP 445를 게시할 LAN/VPN 인터페이스 IP |
 | CREDENTIAL_KEY_PATH | ./data/credential.key | 영속 32바이트 암호화 키 파일 |
 | UPLOAD_MAX_SIZE | 1GB | 파일 및 요청 업로드 제한 |
 | GUACD_HOST / GUACD_PORT | localhost / 4822 | 원격 게이트웨이, Compose host는 127.0.0.1 |
@@ -162,10 +199,6 @@ dashboard 컨테이너를 새로 만들면 네트워크를 공유하는 guacd/br
 [Launcher 문서](docs/launcher.md)에서 홈 편집, 폴더, 위젯, Desktop/Mobile 동작과 앱 등록 방법을 확인하세요. 공통 디자인 시스템과 저장 모델, UI 검증 방법도 함께 설명합니다.
 
 운영 환경변수와 업데이트 명령은 [배포 안내](docs/deployment.md)를 참고하세요.
-
-## NAS 네트워크 저장소
-
-Samba SMB3가 기존 `dashboard-data` 볼륨의 `/app/data/cloud/files`를 공유합니다. NAS 설정, 데이터 보존 확인과 Windows/Linux/Android 연결 방법은 [NAS 운영 안내](docs/nas.md)를 참고하세요. TCP 445를 공용 인터넷에 게시하지 마십시오.
 
 ## 메모장
 앱 목록 → 메모장에서 조직/프로젝트 폴더를 만들고 Notion 방식 블록 편집기로 문서를 작성합니다. 이미지, 체크리스트, 표, Markdown과 자동 저장을 지원하며 빈 문서·할 일·업무 기록·가계부 등 8개 템플릿을 제공합니다. [사용법과 저장/백업 제한](docs/notes.md).
