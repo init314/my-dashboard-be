@@ -15,22 +15,44 @@ TAILSCALE_HOSTNAME=personal-dashboard
 TAILSCALE_ACCEPT_DNS=true
 TAILSCALE_ACCEPT_ROUTES=false
 CLOUD_ROOT=/app/data/cloud
-NAS_USERNAME=nasuser
-NAS_PASSWORD=replace-with-a-unique-password
-NAS_SMB_HOST=nas.example.lan
-NAS_SMB_BIND_ADDRESS=192.168.1.20
+NAS_ENABLED=true
+NAS_PUBLIC_URL=https://dashboard.example.com/dav/
 ```
 
-대시보드 로그인과 SMB 계정은 별도다. Samba 사용자 이름은 영문/숫자/점/밑줄/하이픈 32자 이내로 설정한다. `NAS_SMB_BIND_ADDRESS`는 LAN 또는 VPN 전용 인터페이스 IP여야 하며 공인 주소나 `0.0.0.0`을 사용하지 않는다. Docker published port는 UFW/firewalld 일반 규칙을 우회할 수 있으므로 실제 Docker firewall backend에서 LAN/VPN CIDR만 허용하도록 제한한다. 자격증명은 Git에 추가하지 않는다.
+아이디와 비밀번호는 필수다. 비밀번호는 UTF-8 72바이트 이하이며 `$`, `#` 등의 문자는 작은따옴표로 감싼다. 예시 도메인과 계정 값을 실제 값으로 바꾼다. `NAS_PUBLIC_URL`은 실제 연결 주소 안내·검증에 쓰며 DNS나 HTTPS를 자동 설정하지 않는다. NAS를 사용하지 않으면 `NAS_ENABLED=false`로 설정한다.
 
-Compose의 호스트 포트는 `${DASHBOARD_BIND_ADDRESS:-127.0.0.1}:${DASHBOARD_PORT}:8080`이며 dashboard가 소유한다. 서버 IP로 직접 접속하려면 DASHBOARD_BIND_ADDRESS=0.0.0.0을 설정한다. 같은 서버에서 실행하는 HTTPS 역방향 프록시가 `127.0.0.1:8080`으로 전달하도록 구성한다. 프록시에는 WebSocket Upgrade 지원(터미널·원격 화면) 및 파일 업로드 크기/시간 제한이 필요하다. 다른 컨테이너에서 프록시를 실행하는 경우 그 컨테이너의 localhost는 이 서버가 아니므로 네트워크 연결을 별도로 구성한다. 도메인·인증서·프록시 설정은 이 Compose가 제공하지 않는다.
-
-NAS 전환 시 기존 `dashboard-data` Docker 볼륨을 유지하고 실제 cloud/files 경로와 owner/group/mode를 확인한다. UID/GID 10001과 다른 기존 파일 권한을 조사 없이 변경하지 않는다. 전환 및 클라이언트 확인 절차는 [NAS 안내](nas.md)에 있다. `docker compose down -v`를 사용하지 않는다.
+Compose의 호스트 포트는 `${DASHBOARD_BIND_ADDRESS:-127.0.0.1}:${DASHBOARD_PORT}:8080`이며 dashboard가 소유한다. 서버 IP로 직접 접속하려면 DASHBOARD_BIND_ADDRESS=0.0.0.0을 설정한다. 같은 서버에서 실행하는 HTTPS 역방향 프록시가 `127.0.0.1:8080`으로 전달하도록 구성한다. 프록시에는 WebSocket Upgrade 지원(터미널·원격 화면), 파일 업로드 크기/시간 제한, WebDAV 메서드·Authorization·Destination·If·Lock-Token 전달이 필요하다. 다른 컨테이너에서 프록시를 실행하는 경우 그 컨테이너의 localhost는 이 서버가 아니므로 네트워크 연결을 별도로 구성한다. 도메인·인증서·프록시 설정은 이 Compose가 제공하지 않는다.
 
 HTTP로 직접 접속할 때만 `SESSION_COOKIE_SECURE=false`를 사용한다. HTTP에서 true이면 로그인 쿠키가 전송되지 않아 로그인 유지가 안 된다. Tailscale HTTP 접속도 브라우저 기준으로 HTTP이므로 동일하다. 인터넷 공개 운영에는 HTTPS와 true를 사용한다. Tailscale은 웹 설정에서 로그인 시작 후 표시된 URL을 사용자 브라우저에서 직접 열어 인증한다. 서비스 시작 시 자동 인증을 하지 않으며 기존 TAILSCALE_AUTHKEY 값은 사용하지 않는다.
 
 SQLite·드라이브·암호화 키는 dashboard-data 볼륨, Tailscale 상태는 tailscale-state에 저장된다. 정상 업데이트는 `docker compose --env-file .env up -d --build`를 사용한다. `down -v`는 영구 데이터를 삭제하므로 업데이트 명령으로 사용하지 않는다. `/dev/net/tun`과 NET_ADMIN이 허용된 Linux Docker 환경이 필요하다.
 
+
+## AI 비서의 소스 접근과 재배포
+
+`compose.yaml`은 이 프로젝트 루트를 dashboard 컨테이너의 `/workspace/dashboard`에 읽기·쓰기로 연결한다. Compose 실행 위치의 실제 저장소를 사용하며 경로가 없으면 자동 생성하지 않는다. 운영 코드 수정은 호스트 파일에도 반영된다. Linux 호스트에서는 컨테이너 UID 10001이 수정할 소스 경로에 쓰기 권한이 있어야 한다. `dashboard_context`로 연결 여부를 확인한다. Docker 소켓이나 추가 관리자 권한은 마운트하지 않는다. 호스트 명령은 이미 연결된 터미널 MCP를 사용한다.
+
+코드 저장 후 실행 앱에 반영하려면 호스트의 저장소에서 아래 명령을 실행한다. build는 Dockerfile에 정의된 Python 전체 테스트·Maven verify·Spotless 검사를 포함한다. JS/UI 변경 시 관련 `tools/launcher` 테스트와 필요한 번들 빌드도 먼저 실행한다.
+
+```sh
+docker compose --env-file .env config --quiet
+docker compose --env-file .env build dashboard
+docker compose --env-file .env up -d --no-build dashboard guacd browser tailscale
+```
+
+dashboard 재생성 시 네트워크를 공유하는 세 보조 서비스도 함께 up해야 한다. 데이터 볼륨과 Codex 인증 캐시는 유지한다. 소스 수정만 완료한 상태와 실제 재배포가 완료된 상태를 구분해 안내한다. 배포 전 현재 이미지 태그를 별도로 보관하면 이전 이미지로 되돌릴 수 있다.
+
+비서 자신을 재배포하면 현재 연결이 종료될 수 있다. 호스트 MCP에서 빌드 성공을 확인한 뒤, 운영 교체를 독립 프로세스로 시작하고 완료 로그와 `/health`를 확인한다. Windows PowerShell에서는 저장소 루트에서 다음처럼 실행할 수 있다. 로그 경로의 `target`은 빌드 이후 존재해야 한다.
+
+```powershell
+$dashboardRepo = (Get-Location).Path
+Start-Process -FilePath 'docker' -WorkingDirectory $dashboardRepo -WindowStyle Hidden `
+  -ArgumentList @('compose','--env-file','.env','up','-d','--no-build','dashboard','guacd','browser','tailscale') `
+  -RedirectStandardOutput (Join-Path $dashboardRepo 'target/deploy.stdout.log') `
+  -RedirectStandardError (Join-Path $dashboardRepo 'target/deploy.stderr.log') -PassThru
+```
+
+호스트의 저장소 경로는 dashboard 컨테이너의 `/workspace/dashboard` bind source에서 확인할 수 있다. 컨테이너 소스 경로를 Windows 호스트 명령의 작업 디렉토리로 넘기지 않는다. `.env`, Codex 인증 파일, 로그인 쿠키는 출력하거나 커밋하지 않는다.
 
 ## 카카오톡 기능 제거 후 업데이트
 

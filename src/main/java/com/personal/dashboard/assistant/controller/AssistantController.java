@@ -1,47 +1,55 @@
 package com.personal.dashboard.assistant.controller;
 
+import com.personal.dashboard.assistant.dto.AssistantProject;
+import com.personal.dashboard.assistant.dto.AssistantRequest;
+import com.personal.dashboard.assistant.service.AssistantService;
 import com.personal.dashboard.studio.dto.AssistantDto;
-import com.personal.dashboard.studio.dto.StudioDto.JobView;
-import com.personal.dashboard.studio.dto.StudioDto.Request;
-import com.personal.dashboard.studio.service.StudioService;
-import jakarta.servlet.http.HttpSession;
+import com.personal.dashboard.studio.dto.StudioDto;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-/** OWNER and CSRF protected jobs for the server-hosted floating assistant. */
+/** Authenticated home assistant resources; browser writes retain the existing CSRF protection. */
 @RestController
-@RequestMapping("/api/v1/assistant/jobs")
+@RequestMapping("/api/v1/assistant")
 public class AssistantController {
-  private final StudioService jobs;
+  private final AssistantService service;
 
-  public AssistantController(StudioService jobs) {
-    this.jobs = jobs;
+  public AssistantController(AssistantService service) {
+    this.service = service;
   }
 
-  @PostMapping
+  @GetMapping
+  public AssistantProject project() {
+    return service.project();
+  }
+
+  @PostMapping("/jobs")
   @ResponseStatus(HttpStatus.ACCEPTED)
-  public JobView start(HttpSession session, @Valid @RequestBody Request input) {
-    return jobs.startAssistant(session.getId(), input);
+  public StudioDto.JobView start(
+      @Valid @RequestBody AssistantRequest input, HttpServletRequest request) {
+    return service.start(
+        request.getSession().getId(), request.getLocalPort(), request.getContextPath(), input);
   }
 
-  @GetMapping("/{id}")
-  public JobView get(HttpSession session, @PathVariable String id) {
-    return jobs.get(session.getId(), id);
+  @GetMapping("/jobs/{id}")
+  public StudioDto.JobView get(@PathVariable String id, HttpServletRequest request) {
+    return service.get(request.getSession().getId(), id);
   }
 
-  @PostMapping("/{id}/inputs")
+  @DeleteMapping("/jobs/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void input(
-      HttpSession session,
+  public void cancel(@PathVariable String id, HttpServletRequest request) {
+    service.cancel(request.getSession().getId(), id);
+  }
+
+  @PostMapping("/jobs/{id}/inputs")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void control(
       @PathVariable String id,
-      @Valid @RequestBody AssistantDto.Control input) {
-    jobs.control(session.getId(), id, input);
-  }
-
-  @DeleteMapping("/{id}")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void cancel(HttpSession session, @PathVariable String id) {
-    jobs.cancel(session.getId(), id);
+      @Valid @RequestBody AssistantDto.Control input,
+      HttpServletRequest request) {
+    service.control(request.getSession().getId(), id, input);
   }
 }

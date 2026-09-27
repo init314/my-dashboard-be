@@ -41,23 +41,14 @@ public class SecurityConfiguration {
                     .permitAll()
                     .requestMatchers(
                         new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
-                            "/api/v1/mcp"),
-                        new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
                             "/login"),
                         new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
                             "/css/**"),
                         new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
-                            "/health"),
-                        new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
-                            "/api/v1/telemetry/events"),
-                        new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
-                            "/api/v1/telemetry/gauges"),
-                        new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
-                            "/api/v1/telemetry/batch"))
+                            "/health"))
                     .permitAll()
                     .anyRequest()
                     .hasRole("OWNER"))
-        .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/mcp", "/api/v1/telemetry/**"))
         .formLogin(
             login ->
                 login

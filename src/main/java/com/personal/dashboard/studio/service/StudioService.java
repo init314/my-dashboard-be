@@ -72,15 +72,20 @@ public class StudioService {
   }
 
   public synchronized JobView start(String owner, Request input) {
-    return start(owner, input, false);
+    return startJob(owner, input, null);
   }
 
-  /** Dedicated browser assistant entry; only server-local Codex and setup actions are accepted. */
-  public synchronized JobView startAssistant(String owner, Request input) {
-    return start(owner, input, true);
+  /** Server-created MCP credentials are separate from the browser request and job projection. */
+  public synchronized JobView startAssistant(
+      String owner, Request input, StudioAdapter.AssistantConnection connection) {
+    if (!"local".equals(input.deviceId())
+        || !(input.action().startsWith("codex-") || "setup".equals(input.action())))
+      throw new WorkspaceException(400, "비서는 서버 자체의 Codex만 사용합니다.");
+    return startJob(owner, input, connection);
   }
 
-  private JobView start(String owner, Request input, boolean assistant) {
+  private JobView startJob(
+      String owner, Request input, StudioAdapter.AssistantConnection connection) {
     if (!ACTIONS.contains(input.action()) && !AUTH_ACTIONS.contains(input.action()))
       throw new WorkspaceException(400, "지원하지 않는 작업 또는 입력 크기입니다.");
     if (input.args() != null && input.args().context() != null) {
@@ -95,12 +100,6 @@ public class StudioService {
       if (contextSize > 4000000) throw new WorkspaceException(413, "첨부 컨텍스트 전체 크기는 4 MB 이하여야 합니다.");
     }
     var device = catalog.requireDevice(input.deviceId());
-    if (assistant
-        && (!device.id().equals("local")
-            || !(input.action().equals("setup") || input.action().startsWith("codex-"))))
-      throw new WorkspaceException(400, "서버 assistant는 local Codex 및 setup 작업만 실행할 수 있습니다.");
-    if (!assistant && input.action().startsWith("codex-") && device.id().equals("local"))
-      throw new WorkspaceException(400, "프로젝트 Codex는 등록한 SSH 원격 장비에서 실행합니다.");
     if (jobs.values().stream().filter(Job::running).count() >= 4)
       throw new WorkspaceException(429, "최대 4개 작업을 실행할 수 있습니다.");
     while (jobs.size() >= 32) {
@@ -108,13 +107,13 @@ public class StudioService {
       if (oldest.isEmpty()) break;
       jobs.remove(oldest.get().id);
     }
-    var job = new Job(owner, input.action(), assistant);
+    var job = new Job(owner, input.action());
     jobs.put(job.id, job);
     workers.submit(
         () -> {
           try {
-            if (assistant) adapter.executeAssistant(device, input, job.execution, job::accept);
-            else adapter.execute(device, input, job.execution, job::accept);
+            if (connection == null) adapter.execute(device, input, job.execution, job::accept);
+            else adapter.executeAssistant(device, input, job.execution, job::accept, connection);
             job.finish();
           } catch (WorkspaceException exception) {
             job.fail(exception.getMessage(), exception.status());
@@ -178,7 +177,6 @@ public class StudioService {
   private static final class Job {
     final String id = UUID.randomUUID().toString();
     final String owner, action;
-    final boolean assistant;
     final long created = System.currentTimeMillis();
     final StudioAdapter.Execution execution = new StudioAdapter.Execution();
     final List<Event> events = new ArrayList<>();
@@ -187,10 +185,9 @@ public class StudioService {
     Result result;
     int eventBytes;
 
-    Job(String owner, String action, boolean assistant) {
+    Job(String owner, String action) {
       this.owner = owner;
       this.action = action;
-      this.assistant = assistant;
     }
 
     synchronized boolean running() {

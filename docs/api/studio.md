@@ -8,11 +8,11 @@
 | GET | `/api/v1/studio/jobs/{id}` | 200 JobView; 상태/최근 이벤트/결과 |
 | DELETE | `/api/v1/studio/jobs/{id}` | 204; 멱등 취소, 완료된 변경 유지 |
 
-요청: `{deviceId, root, action, args}`. deviceId는 서버 자체를 뜻하는 `local` 또는 등록 SSH 장비 ID다. root는 해당 장비의 파일 루트 안에 있는 절대 작업 폴더다. `local`은 Linux 대시보드 프로세스에서 SSH 없이 파일/Git 작업을 실행하고 Docker 기본 루트는 `/app/data/files`다. 프로젝트 편집기의 `codex-*` action은 등록 SSH 장비에서만 허용하며 Codex CLI와 인증은 해당 SSH 계정에서 사용한다. 앱 자체 assistant는 별도 `/api/v1/assistant/jobs` 경로를 사용하고, 요청 root 대신 서버가 고정한 전용 폴더를 사용한다. args는 아래 명시된 필드만 사용한다. 길이 제한: 경로 4096, revision 64, content 1048576자(원격 UTF-8 기준 추가 1 MiB 제한), message 4000, branch/name/email 200, url 2048, prompt 32000, model 100, mode 30.
+요청: `{deviceId, root, action, args}`. deviceId는 서버 자체를 뜻하는 `local` 또는 등록 SSH 장비 ID다. root는 해당 장비의 파일 루트 안에 있는 절대 작업 폴더다. `local`은 Linux 대시보드 프로세스에서 SSH 없이 실행하고 Docker 기본 루트는 `/app/data/files`다. args는 아래 명시된 필드만 사용한다. 길이 제한: 경로 4096, revision 64, content 1048576자(원격 UTF-8 기준 추가 1 MiB 제한), message 4000, branch/name/email 200, url 2048, prompt 32000, model 100, mode 30.
 
 | action | args | result |
 | --- | --- | --- |
-| setup | refresh? | git, codex 버전. local 서버 Codex는 최신 stable 확인 후 MCP URL과 bearer 환경변수 등록을 갱신 |
+| setup | 없음 | git, codex 버전 |
 | list | path (기본 `.`) | root, path, entries: [{name,path,directory}] |
 | read | path | content, revision |
 | save | path, content, revision | revision |
@@ -31,7 +31,7 @@
 | github-login / github-status | 없음 | authenticated |
 | codex-login / codex-logout | 없음 | authenticated |
 | codex-status | 없음 | authenticated, version |
-| codex-run | prompt, threadId?, model?, effort?, mode?, context? | assistant (아래 App Server 계약) |
+| codex-run | prompt, threadId?, model?, effort?, mode?, context? | assistant (아래 App Server 계약). mode는 `danger-full-access`(기본), `workspace-write`, `read-only` |
 
 JobView: `{id,action,state,events,result,error,errorStatus}`. state는 RUNNING → SUCCEEDED/FAILED/CANCELLED. result는 성공 시 위 표의 필드만, 실행 중/실패는 null. events는 `{event,text?,state?,url?,code?}`의 최근 목록이다. 이벤트 URL/코드는 의도적으로 시작한 기기 코드 인증에만 제공한다. 비밀번호/API 키/token 필드는 없다. Codex 로그인 상태는 CLI 캐시 존재 확인이며 유료 모델 호출을 통한 인증 검증이 아니다.
 
@@ -54,13 +54,15 @@ HTTP 오류: 익명401, 권한/CSRF403, 미존재/다른 세션 작업404, 잘�
 | codex-thread-rollback | threadId | thread. 마지막 1 turn 기록 제거, 파일 복구 없음 |
 | codex-run | prompt, threadId?, model?, effort?, mode?, context? | thread, status, turnId |
 | codex-review | threadId?, model?, mode? | 미커밋 변경 리뷰 후 thread/status/turnId |
-| codex-account | 없음 | authenticated, plan (계정 주소/토큰 제외) |
+| codex-account | 없음 | authenticated, plan, rateLimits (계정 주소/토큰 제외) |
 | codex-skills | 없음 | skills: name/description/path/enabled |
-| codex-connections | 없음 | connections: name/status (인증 방식), runtimeStatus (선택/null 가능), tools (도구 이름 배열), error (안전한 오류 안내, 정상 시 빈 문자열) |
+| codex-connections | 없음 | connections: name/status/toolCount/authStatus (CLI에서 발견한 MCP 도구와 별도 인증 방식) |
+
+connections 항목은 모두 non-null이며 name:String, status:String(available/noTools), toolCount:Integer(0 이상), authStatus:String(CLI 인증 방식, 없으면 unknown)이다. available은 tools 목록이 비어 있지 않다는 뜻이며 실제 호출 성공을 보증하지 않는다. noTools는 현재 발견된 도구가 없다는 뜻이다. authStatus의 unsupported는 OAuth 인증을 제공하지 않는다는 뜻으로 연결 실패가 아니다. 같은 계약을 AI 비서가 재사용한다.
 
 context는 최대 16개 {kind:file|selection|image|skill,path?,name?,content?,fromLine?,toLine?,dataUrl?}. file/selection 경로는 프로젝트 안에서만 허용한다. 파일은 서버에서 읽고 selection은 사용자가 선택한 UTF-8 스냅샷을 받는다. 텍스트 합계 128000자, selection당 32000자, image는 PNG/JPEG/WebP data URL 최대 3000000자. 요청 컨텍스트 content/dataUrl 전체는 4000000자 이하. skill은 CLI skills/list의 활성 항목과 이름·경로가 일치해야 한다.
 
-실행 이벤트에는 assistant {sequence,kind,threadId?,turnId?,item?,usage?,interaction?,requestId?,text?}가 추가된다. sequence는 job별 단조 증가하며 UI는 중복을 제거하고 item ID로 최신 내용을 갱신한다. kind는 started/item/interaction/answered/usage/plan/diff/notice/completed. usage는 누적 토큰과 마지막 컨텍스트 사용량·윈도 크기다. `mcpToolCall` item에는 호출한 `server`, `tool` 이름도 포함한다. 원본 인자와 도구 결과는 이 메타데이터에 포함하지 않는다.
+실행 이벤트에는 assistant {sequence,kind,threadId?,turnId?,item?,usage?,rateLimits?,interaction?,requestId?,text?}가 추가된다. sequence는 job별 단조 증가하며 UI는 중복을 제거하고 item ID로 최신 내용을 갱신한다. kind는 started/item/interaction/answered/usage/rateLimits/plan/diff/notice/completed. usage는 누적 토큰과 마지막 컨텍스트 사용량·윈도 크기다.
 
 POST /api/v1/studio/jobs/{id}/inputs body:
 - 승인: {type:approval,requestId,decision:accept|acceptForSession|decline|cancel}
@@ -69,16 +71,6 @@ POST /api/v1/studio/jobs/{id}/inputs body:
 - 정상 중단: {type:interrupt}
 
 codex-run/review/thread-compact의 실행 중 job에만 입력할 수 있다. 보류 중 요청 ID/종류를 remote adapter가 재검증한다. 지원하지 않는 MCP elicitation/권한 요청은 명시적으로 거절한다. DELETE 작업은 강제 종료 경로이며 이미 적용한 파일 변경은 유지한다.
-
-## 대시보드 assistant API
-
-별도 `/api/v1/assistant/jobs` 경로는 OWNER와 생성한 HTTP 세션을 사용한다. 도우미가 사용하는 action은 `setup`, `codex-models`, `codex-account`, `codex-connections`, `codex-login`, `codex-run`이다.
-
-`codex-connections`는 App Server의 MCP 목록을 모든 페이지에 걸쳐 조회한다. `status`는 인증 방식이며 연결 성공을 뜻하지 않는다. 브라우저는 오류 없이 일정 도구가 발견되고 `runtimeStatus`가 `connected` 또는 null/생략이면 준비 완료로 처리한다. 명시적인 비연결 상태와 빈 도구 목록은 실패다. 계정 미인증은 MCP 조회보다 먼저 로그인 안내로 처리한다. API의 OWNER/session 소유권, 입력 처리와 취소 동작은 유지한다.
-
-server-local `codex-run`은 App Server 실행 및 thread/start·resume에 서버 MCP URL, bearer 환경변수 이름, enabled/required 설정을 명시적으로 적용한다. 대시보드용 developerInstructions는 앱·일정·노트 도구의 용도, 서버 날짜, 조회한 MCP 목록을 제공한다. thread 생성/재개 후 같은 threadId로 앱·일정·노트 조회 도구를 다시 확인하고 실패 시 모델 turn 전에 job을 FAILED/errorStatus=502로 종료한다. SSH 프로젝트 Codex에는 이 설정과 지침을 적용하지 않는다.
-
-server-local 모델 turn이 failed이면 job도 FAILED로 반환한다. Codex 인증 실패·갱신 토큰 오류는 errorStatus=401과 재로그인 안내, 그 외 모델 실패는 errorStatus=502와 일반 오류 안내를 반환한다. 이 401은 비동기 job 결과이며 대시보드 HTTP 로그인 세션 만료와 구분한다. 브라우저는 Codex 로그인 버튼을 다시 표시한다.
 
 
 ## 장비 로그 작업
@@ -92,3 +84,20 @@ Event.sequence는 선택 Long(null이면 JSON 생략), 로그 이벤트에서 1�
 작업 생성은 202; 기존 요청 바인딩 오류 400, 인증/CSRF 오류 401/403, 작업 미존재/다른 세션 404, 실행 한도 초과 429 계약을 유지한다. 비동기 실패는 JobView.state=FAILED 및 error/errorStatus로 전달한다: source/target 오류 400, CLI 누락 또는 사라진 pane 409, 목록/화면 2MiB 초과 413, 목록/캡처 10초 초과 504, Docker 데몬/로그 접근 및 tmux 소켓 실패 502. tmux 기본 서버/세션이 없으면 빈 목록이다. DELETE는 읽기 프로세스만 취소하며 대상 컨테이너/pane은 유지한다. 로그 작업의 inputs 전송은 지원하지 않는다.
 
 운영·갱신·보유 제한은 [장비 로그](../device-logs.md)를 따른다.
+
+
+## Codex 사용량과 초기화 시각
+
+`codex-account`의 `result.assistant.rateLimits`는 계정 한도 목록이다. `account/rateLimits/read`의 `rateLimitsByLimitId`를 우선 투영하고, 없으면 단일 `rateLimits`를 사용한다. 각 primary/secondary 창을 아래 DTO로 반환한다. 계정이 없거나 upstream이 한도를 제공하지 않으면 빈 배열이며 사용량 0%를 뜻하지 않는다. 원본 인증 정보나 결제·재설정 크레딧은 반환하지 않는다.
+
+| 필드 | 타입 / null | 의미 |
+| --- | --- | --- |
+| id | String / 불가 | 한도 ID와 창 이름을 조합한 안정적인 키 (`codex:primary`) |
+| name | String / 불가 | upstream 한도 이름과 기본/추가 한도 표시 |
+| usedPercent | Double / 허용 | 사용 비율 0~100. null은 미제공 |
+| resetsAt | Long / 허용 | 초기화 예정 Unix 초. null은 미제공 |
+| windowDurationMins | Long / 허용 | 한도 창의 전체 길이(분). null은 미제공 |
+
+`events[].assistant.kind=rateLimits`는 `rateLimits: RateLimit[]`를 선택 필드로 포함한다. 원본 `account/rateLimits/updated` 이벤트도 같은 adapter와 DTO로 투영하며 UI는 id 기준으로 갱신해 다른 한도를 유지한다. 다른 종류의 이벤트에는 rateLimits가 null이면 생략된다. 소유 세션/OWNER/CSRF/작업 상태 계약과 upstream 오류 매핑은 동일하다.
+
+홈·IDE는 유휴 상태에서 30초 간격으로 계정 한도를 조회한다. 카운트다운은 서버의 `resetsAt`과 브라우저 시계로 1초마다 계산하며 별도 네트워크 요청을 만들지 않는다. 시간 게이지는 `(resetsAt - 현재 Unix 초) / (windowDurationMins * 60)`의 0~100% 범위 값이다. 전체 길이가 없으면 시간만, 초기화 시각이 없으면 미제공 상태를 표시한다. 만료 시 '초기화 확인 중'으로 표시하고 다음 서버 스냅샷 전까지 사용량을 임의로 0으로 만들지 않는다. 조회 실패 시 이전 값과 마지막 조회 시각을 보존하고 갱신 지연을 표시한다. 상세 UI는 [SENTIS 디자인](../design.md)을 따른다.

@@ -1,0 +1,39 @@
+/* Account limits and conversation capacity are deliberately separate measurements. */
+.cx-usage-panel{min-width:0;margin:12px 0;padding:0;border:0;background:transparent}
+.cx-usage-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;color:var(--text-secondary)}
+.cx-usage-heading strong{display:flex;align-items:center;gap:8px;font:11px var(--font-mono);letter-spacing:.1em;color:var(--accent)}
+.cx-usage-heading strong>span:last-child{letter-spacing:0;color:var(--text-secondary);font:11px var(--font-ui)}
+.cx-usage-heading .dot{background:var(--accent);box-shadow:0 0 8px var(--hud-glow)}
+.cx-usage-heading small{font-size:10px;color:var(--text-muted)}
+.cx-usage-grid{display:flex;gap:10px;align-items:stretch;min-width:0}
+.cx-account-gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;flex:2;min-width:0}
+.cx-usage-panel .cx-gauge-card{border:1px solid var(--border-subtle);border-radius:4px;background:var(--bg-app);padding:13px 14px;min-width:0;margin:0}
+.cx-usage-panel .cx-gauge-label{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;font-size:11px;color:var(--text-secondary)}
+.cx-usage-panel .cx-gauge-label>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-usage-panel .cx-gauge-label b{font:16px var(--font-mono);color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums}
+.cx-usage-panel .cx-gauge-track{height:5px;border-radius:0;overflow:hidden;background:var(--border-subtle);margin:0}
+.cx-usage-panel .cx-gauge-track>span{display:block;height:100%;width:0;background:var(--accent);box-shadow:0 0 12px var(--hud-glow);transition:width .4s ease}
+.cx-usage-panel .cx-gauge-track[data-known=false]{background:repeating-linear-gradient(100deg,var(--border-subtle) 0 6px,transparent 6px 10px)}
+.cx-usage-panel [data-level=warning] [data-limit-track]>span{background:var(--warning)}
+.cx-usage-panel [data-level=high] [data-limit-track]>span{background:var(--danger)}
+.cx-reset-label{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:13px 0 7px;font-size:10px;color:var(--text-muted)}
+.cx-reset-label time{font:11px var(--font-mono);font-variant-numeric:tabular-nums;color:var(--hud-amber)}
+.cx-usage-panel .cx-reset-track{height:3px}.cx-usage-panel .cx-reset-track>span{background:var(--hud-amber);box-shadow:none}
+.cx-usage-panel .cx-context-card{flex:1;min-width:170px}.cx-context-card small{display:block;margin-top:12px;font-size:10px;color:var(--text-secondary)}
+.cx-context-card .cx-context-note{color:var(--text-muted);margin-top:5px}
+.cx-gauge-empty{display:flex;align-items:center;min-height:100px;margin:0;padding:14px;border:1px dashed var(--border-subtle);font-size:12px;color:var(--text-muted)}
+.cx-usage-panel[data-state=stale] .cx-usage-heading small{color:var(--warning)}
+.assistant-usage{padding:0 20px 12px;flex-shrink:0;border-bottom:1px solid var(--border-subtle)}
+.assistant-usage .cx-usage-panel{margin:14px 0 0}
+/* The IDE is a narrow panel; its usage cards stay beneath the composer. */
+#studio-codex .cx-usage-grid{flex-direction:column}
+#studio-codex .cx-context-card{min-width:0}
+@media(max-width:700px){
+ .assistant-usage{padding:0 12px 10px}.cx-usage-heading{gap:6px;margin-bottom:8px}.cx-usage-heading strong{font-size:10px;gap:5px}.cx-usage-heading small{font-size:9px}
+ .cx-usage-grid{flex-direction:column;gap:8px}.cx-account-gauges{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .cx-usage-panel .cx-gauge-card{padding:10px}.cx-usage-panel .cx-gauge-label{font-size:10px;gap:5px;margin-bottom:8px}.cx-usage-panel .cx-gauge-label b{font-size:13px}
+ .cx-reset-label{font-size:9px;gap:3px;flex-wrap:wrap;margin-top:10px}.cx-reset-label time{font-size:10px}
+ .cx-usage-panel .cx-context-card{min-width:0;display:grid;grid-template-columns:1fr 1fr;column-gap:16px;align-items:center}
+ .cx-context-card .cx-gauge-label{margin:0}.cx-context-card small{margin:4px 0 0;font-size:9px}.cx-context-card .cx-context-note{margin:4px 0 0;text-align:right;font-size:9px}
+ .cx-gauge-empty{grid-column:1/-1;min-height:70px;font-size:11px}
+}

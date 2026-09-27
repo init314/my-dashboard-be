@@ -64,7 +64,7 @@ Docker에 공식 Tailscale을 기본 포함한다. 최초 로그인 후 Tailscal
 
 ## 드라이브 NAS
 
-Samba SMB3 공유를 기존 영구 클라우드 파일 디렉터리에 제공하며 Windows/Linux/Android 연결 정보를 안내한다. [설정 및 호환 범위](nas.md).
+기존 클라우드 드라이브를 WebDAV로 제공하며 기기별 연결 안내, 환경변수 공개 주소, 동일 계정 인증, 파일 잠금과 휴지통을 지원한다. [설정 및 호환 범위](nas.md).
 
 ## 원격 데스크톱 자동 구성
 
@@ -72,9 +72,7 @@ Samba SMB3 공유를 기존 영구 클라우드 파일 디렉터리에 제공하
 
 ## 메모장
 앱 목록의 메모장에서 조직/프로젝트 폴더와 문서를 관리한다. Notion 방식 한국어 블록 편집기, 이미지, Markdown, 자동 저장과 충돌 보호를 제공한다. 빈 문서·할 일·업무 기록·가계부·프로젝트 개요·회의록·주간 회고·아이디어의 8개 템플릿을 제공한다. [사용법과 제한](notes.md).
-# Service Telemetry
 
-- Telemetry 앱은 외부 서비스 관리, 1회 표시 API Key, Integration 예제와 기간별 analytics를 제공한다.
-- Service API Key 수집은 OWNER dashboard session과 분리되어 있으며 services 관리와 analytics는 OWNER 전용이다.
-- Home grid에는 Telemetry 앱이 포함되고 Service Analytics widget은 위젯 추가 메뉴에서 선택할 수 있다.
-- 상세한 event, gauge, privacy, authentication, database and limit contracts: [Service Telemetry](telemetry.md).
+## AI 비서
+
+[SENTIS](assistant.md): 홈 Codex 대화, 일정·시간표·메모·앱·장비·파일·설정 제어, 웹 검색·공개 페이지 읽기와 다운로드 링크. 세션 인증·CSRF를 사용하는 MCP 12개와 실제 소스의 쓰기 가능한 마운트로 대시보드 코드 수정까지 지원한다.

@@ -38,8 +38,7 @@ public final class StudioDto {
       @Size(max = 2000) String cursor,
       @Size(max = 200) String query,
       Boolean archived,
-      @Valid @Size(max = 16) List<AssistantDto.Context> context,
-      Boolean refresh) {}
+      @Valid @Size(max = 16) List<AssistantDto.Context> context) {}
 
   public record Entry(String name, String path, boolean directory) {}
 

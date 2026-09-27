@@ -1,10 +1,10 @@
-﻿'use strict';
+'use strict';
 /** @typedef {{id:string,name:string,icon:string,route?:string,action?:string,kind?:string,targetId?:string,widgets?:string[]}} WorkspaceApp */
 window.WorkspaceApps = (() => {
   const builtins = [
+    {id:'assistant',name:'SENTIS',icon:'studio',route:'assistant'},
     {id:'devices',name:'장비',icon:'devices',route:'devices',widgets:['device-status']},
     {id:'notes',name:'메모장',icon:'notes',route:'notes'},
-    {id:'telemetry',name:'Telemetry',icon:'apps',route:'telemetry',widgets:['service-analytics']},
     {id:'cloud',name:'클라우드 드라이브',icon:'files',route:'cloud'},
     {id:'files',name:'파일',icon:'files',route:'files',widgets:['recent-files']},
     {id:'logs',name:'장비 로그',icon:'terminal',route:'logs'},

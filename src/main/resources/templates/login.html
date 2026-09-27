@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>로그인 · Personal Workspace</title>
+  <title>로그인 · SENTIS</title>
 
 <link rel="stylesheet" th:href="@{/css/design-system.css}">
 <link rel="stylesheet" th:href="@{/css/app.css}">
@@ -11,9 +11,9 @@
 </head>
 <body class="login-page">
   <main class="login-card">
-    <div class="brand-mark" aria-hidden="true">PW</div>
-    <p class="eyebrow">PERSONAL WORKSPACE</p>
-    <h1>나만의 작업 공간</h1>
+    <div class="sentis-core" aria-hidden="true"><span></span></div>
+    <p class="eyebrow">SENTIS / PERSONAL WORKSPACE</p>
+    <h1>SENTIS에 연결</h1>
     <p class="muted">대시보드에 접속하려면 로그인하세요.</p>
     <p class="notice error" role="alert" th:if="${param.error}">아이디 또는 비밀번호를 확인해 주세요.</p>
     <p class="notice" role="status" th:if="${param.logout}">로그아웃되었습니다.</p>

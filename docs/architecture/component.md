@@ -28,10 +28,6 @@ Launcher UI → App/Widget Registry, HomeGrid, HomePersistence의 단방향 의�
 
 studio-codex.js는 세션/모델/컨텍스트 및 대화 표시를 소유하고 studio.js가 제공하는 프로젝트·작업 잠금·파일 선택 facade를 사용한다. AssistantDto는 외부 프로토콜의 안전한 HTTP 투영이다. codex_bridge.py만 JSON-RPC 메서드와 스킬·파일 경계를 처리한다.
 
-### 서버 Codex assistant
-
-assistant.js와 assistant.css는 IDE Codex 패널과 분리된 대시보드 전용 대화 화면을 소유한다. 프로젝트 컨텍스트나 StudioCodex 화면을 재사용하지 않는다. 대화는 기존 assistant job과 Codex API를 호출한다. 일반 StudioController의 프로젝트 Codex는 SSH 대상을 사용한다. McpController는 Streamable HTTP 요청·bearer 검증만 담당하고 AssistantMcpService는 기존 Catalog/Planner/Notes service의 고정 도구를 제공한다. AssistantEvents는 browser navigation event를 메모리에 보유하며 DB 모델을 추가하지 않는다.
-
 장비 로그 화면(device-logs.js)은 선택·표시·취소를 담당하고 StudioService가 작업 소유권·수명·보유 제한을 관리한다. logs.py는 고정 CLI 인자와 출력 읽기만 담당한다. StudioDto.LogTarget과 Event.sequence가 목록 및 중복 없는 출력 계약이며 파일 Entry나 Codex 이벤트 타입과 혼용하지 않는다.
 
 Tailscale UI는 상태 표시와 링크 열기만 담당하고 Controller → TailscaleService(OWNER) → TailscaleAdapter → sidecar bridge 경계를 따른다. HTTP 응답은 전용 TailscaleView이며 daemon 원본 peer/키 정보는 반환하지 않는다.
@@ -43,3 +39,9 @@ CloudStorage는 파일 경로·특수 파일 방어와 IO를 전담한다. Cloud
 DesktopSetupService는 기존 CatalogService 프로필과 RemoteAdapter 연결 검증을 조합한다. DesktopSetupAdapter의 내부 Managed 모델은 암호화된 비밀번호와 장비 식별 해시를 보존하며 HTTP DTO와 분리한다. [경계](../remote-desktop.md).
 
 메모장은 NoteController → NoteService → NoteRepository 경계를 따른다. NoteRecord는 저장용이며 HTTP에는 NoteDto.Entry/Document만 반환한다. NoteContentValidator는 블록/링크/크기 검증을 맡는다. notes.js는 폴더 탐색·폼·저장 버전·오류를 관리하고 BlockNote 브리지는 편집·Markdown 변환·이미지 업로드 콜백만 맡는다. 템플릿은 notes-templates.js의 독립 블록 복사본이다.
+
+## AI 비서 모듈
+
+assistant는 홈 비서의 고정 실행 대상과 허용 작업·전체 권한 실행 정책(danger-full-access, approvalPolicy=never)을 소유한다. StudioService의 작업 수명과 StudioAdapter의 프로세스 실행은 재사용한다. 내부 AssistantConnection은 브라우저 입력과 public DTO에서 분리하며 toString은 redacted다. dashboard_assistant의 DashboardClient는 고정 loopback 대상·세션·CSRF·JSON/multipart 전송을 담당하고 기존 API를 호출하여 기능별 비즈니스 규칙을 중복 구현하지 않는다. 소스 context는 마운트·계약 경로를 안내한다. 웹 읽기는 MCP 전용 adapter에 격리한다. StudioCodex 렌더러는 host namespace와 비서 표시 옵션으로 재사용하고 홈과 IDE의 DOM ID를 구분한다.
+
+`WorkspaceCodexUsage`는 계정 한도와 대화 사용량 DTO를 받아 DOM과 초 단위 남은 시간을 표시한다. 네트워크는 `StudioCodex`가 기존 인증된 job API를 통해 담당하고 quota 폴링을 대화의 running/steer 상태와 분리한다. 홈에서는 assistant.usageTarget에 동일 패널을 배치하며 전체 화면 전환 시 상태를 유지한다.

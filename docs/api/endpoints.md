@@ -1,7 +1,6 @@
 # HTTP 엔드포인트 목록
 
-별도 표시가 없는 `/api/v1` 및 `/ws` 경로는 OWNER 인증이 필요하다. OWNER 세션 변경 API는 CSRF가 필요하다. MCP와 Telemetry ingestion만 각각 분리된 Bearer 인증을 사용한다.
-예외: `/api/v1/telemetry/events`, `/gauges`, `/batch`는 service API Key Bearer 인증을 쓰며 dashboard session/CSRF 없이 수집한다. `/api/v1/telemetry/services/**`는 OWNER 전용이다.
+모든 `/api/v1` 및 `/ws` 경로는 OWNER 인증이 필요하다. 상태 변경 API는 CSRF가 필요하다.
 
 | Method | URL | Auth | 설명 |
 | --- | --- | --- | --- |
@@ -10,17 +9,6 @@
 | GET | / | OWNER | 대시보드 |
 | POST | /logout | CSRF | 세션 종료 |
 | GET | /health | public | 프로세스 liveness |
-| GET | /api/v1/telemetry/services | OWNER | 서비스 요약 목록 |
-| POST | /api/v1/telemetry/services | OWNER + CSRF | 서비스 생성, API Key는 응답에서 1회 노출 |
-| GET | /api/v1/telemetry/services/{id} | OWNER | 서비스 설정 |
-| DELETE | /api/v1/telemetry/services/{id} | OWNER + CSRF | 서비스 비활성화, 데이터 보존 |
-| PUT | /api/v1/telemetry/services/{id}/enabled | OWNER + CSRF | 수집 활성화 상태 변경 |
-| POST | /api/v1/telemetry/services/{id}/key | OWNER + CSRF | key 교체, 신규 원문 1회 노출 |
-| DELETE | /api/v1/telemetry/services/{id}/key | OWNER + CSRF | key 폐기 |
-| GET | /api/v1/telemetry/services/{id}/analytics?range=1h\|24h\|7d\|30d | OWNER | 기간별 집계와 분포 조회 |
-| POST | /api/v1/telemetry/events | Service API Key | event 수집 |
-| POST | /api/v1/telemetry/gauges | Service API Key | gauge sample 수집 |
-| POST | /api/v1/telemetry/batch | Service API Key | 최대 100 events + 100 gauges 수집 |
 | GET | /api/v1/calendar/events | OWNER | 날짜 범위의 일정 조회 |
 | POST | /api/v1/calendar/events | OWNER | 일정 생성 |
 | PUT | /api/v1/calendar/events/{id} | OWNER | 일정 수정 |
@@ -71,12 +59,6 @@
 POST /api/v1/studio/jobs, GET/DELETE /api/v1/studio/jobs/{id}: 세션 소유 로컬/SSH 파일·Git·Codex 작업. [계약](studio.md).
 
 | POST | /api/v1/studio/jobs/{id}/inputs | OWNER + 작업 소유 세션 + CSRF | Codex 승인·답변·추가 지시·중지 |
-| POST | /api/v1/assistant/jobs | OWNER + CSRF | 서버 Codex assistant job 시작 |
-| GET | /api/v1/assistant/jobs/{id} | OWNER + 작업 소유 세션 | assistant 상태·이벤트·결과 조회 |
-| POST | /api/v1/assistant/jobs/{id}/inputs | OWNER + 작업 소유 세션 + CSRF | assistant 승인·답변·추가 지시·중지 |
-| DELETE | /api/v1/assistant/jobs/{id} | OWNER + 작업 소유 세션 + CSRF | assistant job 취소 |
-| GET | /api/v1/assistant/events | OWNER | Codex가 요청한 브라우저 페이지 이동 확인 |
-| POST | /api/v1/mcp | Bearer token | Streamable HTTP MCP 초기화와 도구 호출 |
 
 | GET | /api/v1/tailscale | OWNER | 서버 Tailscale 연결 상태 조회 |
 | POST | /api/v1/tailscale/login | OWNER + CSRF | 서버 Tailscale 인증 링크 발급 시작 |
@@ -103,6 +85,7 @@ POST /api/v1/studio/jobs, GET/DELETE /api/v1/studio/jobs/{id}: 세션 소유 로
 ## NAS
 
 - GET /api/v1/cloud/nas: OWNER 세션으로 연결 설정 조회.
+- /dav/**: OWNER Basic 인증 WebDAV. [메서드·제약](../nas.md).
 
 ## 원격 자동 구성
 
@@ -121,3 +104,13 @@ POST /api/v1/studio/jobs, GET/DELETE /api/v1/studio/jobs/{id}: 세션 소유 로
 | DELETE | /api/v1/notes/{id} | OWNER + CSRF | 문서 또는 빈 폴더 영구 삭제 |
 | POST | /api/v1/notes/{id}/images | OWNER + CSRF | 문서 이미지 첨부 |
 | GET | /api/v1/notes/images/{id} | OWNER | 첨부 이미지 읽기 |
+
+## AI 비서
+
+| Method | URL | Auth | 설명 |
+| --- | --- | --- | --- |
+| GET | /api/v1/assistant | OWNER | 홈 비서의 전용 실행 컨텍스트 |
+| POST | /api/v1/assistant/jobs | OWNER + CSRF | 비서 Codex 작업 생성 |
+| GET | /api/v1/assistant/jobs/{id} | OWNER | 로그인 소유 비서 작업 조회 |
+| DELETE | /api/v1/assistant/jobs/{id} | OWNER + CSRF | 로그인 소유 비서 작업 취소 |
+| POST | /api/v1/assistant/jobs/{id}/inputs | OWNER + CSRF | 추가 지시·질문 답변·중지 |

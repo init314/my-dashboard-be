@@ -11,7 +11,10 @@
 @import "../../src/main/resources/static/css/planner.css" layer(base);
 @import "../../src/main/resources/static/css/studio.css" layer(base);
 @import "../../src/main/resources/static/css/studio-codex.css" layer(base);
+@import "../../src/main/resources/static/css/assistant.css" layer(base);
 @import "../../src/main/resources/static/css/os-shell.css" layer(base);
+@import "../../src/main/resources/static/css/codex-usage.css" layer(components);
+@import "../../src/main/resources/static/css/sentis-hud.css" layer(components);
 @source "../../src/main/resources/templates";
 @source "../../src/main/resources/static/js";
 

@@ -18,3 +18,7 @@
 .DS_Store
 
 /tools/ui/node_modules/
+
+# Python runtime caches
+__pycache__/
+*.py[cod]

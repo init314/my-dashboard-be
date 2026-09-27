@@ -5,8 +5,6 @@
 
 Java 기준 루트: `src/main/java/com/personal/dashboard/`.
 
-- `assistant/controller`, `assistant/service`, `assistant/dto`: server-hosted Codex job, Streamable HTTP MCP, browser navigation events and allowlisted application tools.
-
 | 경로 | 책임 |
 | --- | --- |
 | `catalog/controller/CatalogController.java` | 리소스 HTTP 계약과 장비 작업 요청 |
@@ -33,20 +31,16 @@ Java 기준 루트: `src/main/java/com/personal/dashboard/`.
 | `src/main/resources/templates/` | Thymeleaf 로그인·대시보드·오류 |
 | `src/main/resources/static/css/workspace.css` | 앱 콘텐츠와 실행 화면 레이아웃 (테마는 design-system.css) |
 | `src/main/resources/static/js/workspace.js` | UI 조작, API/WS 전송과 화면 상태 |
-| `src/main/resources/static/js/assistant.js`, `css/assistant.css` | IDE와 분리된 대시보드 전용 Codex 대화 화면 |
 | `src/main/resources/static/vendor/` | 자체 제공 xterm/Guacamole JS와 라이선스 |
 | `src/test/java/` | 인증·메타데이터·파일·실행 세션 테스트 |
 | `docker/browser/` | Chromium+VNC 이미지 및 진입 스크립트 |
-| `Dockerfile`, `compose.yaml` | 서버, 원격 실행, SMB NAS 서비스 구성 |
+| `Dockerfile`, `compose.yaml` | 서버 및 원격 실행 서비스 구성 |
 | `pom.xml`, `mvnw*`, `.mvn/` | 재현 가능한 빌드·테스트·스타일 검사 |
 | `docs/features.md` | 참고 화면 기능 대조표 |
 
 `data/`, `target/`, `.tools/`, `.m2/`, `.env`는 Git에서 제외한다. 참고 자료에는 프로젝트 명세를 작성하지 않는다.
 
 - `docker/start.sh`: 기존/새 데이터 볼륨에 영속 셸 홈과 SSH 디렉토리를 준비한 뒤 Java 서버를 실행한다.
-
-- `docker/samba/`: SMB3 전용 Samba 이미지와 storage 공유 설정. `docker/nas-storage-init/`은 기존 dashboard-data 볼륨 안에 NAS 하위 경로가 없을 때만 생성한다.
-- `nas/{controller,service,dto}`: OWNER 전용 SMB 연결 설정 안내 API. 파일 전송은 Samba가 맡는다.
 
 - `catalog/controller/SshDeviceController.java`, `catalog/dto/SshDeviceRequest.java`: SSH 명령 형태의 장비 등록 API와 비밀번호 비노출 요청.
 - `catalog/service/SshDeviceService.java`: 명령 파싱, 최초 호스트 키 신뢰, 검증 후 장비 생성/갱신. SSH 및 홈 조회는 `global/integration/SshAdapter`에 위임한다.
@@ -120,6 +114,17 @@ Java 기준 루트: `src/main/java/com/personal/dashboard/`.
 
 - `tools/ui/`: Tailwind CSS 빌드 진입점과 잠금 파일. 생성물은 `static/vendor/workspace-ui.css`이며 홈·로그인·오류 템플릿에서 공통 사용한다.
 - `static/js/drawers.js`: 모바일 모달 사이드바의 열기·닫기, 패널 상태와 포커스 복원 담당.
-- `telemetry/{controller,service,repository,dto}`: OWNER service management/analytics와 별도 service-key ingestion, SQLite raw/hourly aggregates.
-- `static/js/telemetry.js`, `static/css/telemetry.css`: Telemetry 앱과 Integration 화면, 반응형 분석 카드.
-- `db/migrations/V6__telemetry.sql`: 서비스/API key hash/event/gauge/hourly aggregate schema.
+
+## AI 비서
+
+- `assistant/controller/AssistantController.java`: 홈 비서 컨텍스트와 로그인 소유 작업 HTTP 계약.
+- `assistant/service/AssistantService.java`: 허용 action, local 전용 폴더, danger-full-access 실행, 내부 MCP 연결 생성.
+- `assistant/adapter/AssistantWorkspaceAdapter.java`: 전용 작업 폴더 생성과 파일·심볼릭 링크 대체 거부.
+- `assistant/dto/AssistantRequest.java`, `AssistantProject.java`: 요청과 공개 실행 컨텍스트 DTO.
+- `src/main/resources/studio/assistant_mcp.py`: 기존 세션·CSRF 인증 API 조회/변경·파일 업로드·소스 컨텍스트와 공개 웹 읽기의 stdio MCP adapter.
+- `static/js/assistant.js`, `static/css/assistant.css`: 홈·전체 화면을 공유하는 대화와 오늘 일정 카드.
+- `src/test/java/.../assistant/`, `src/test/python/test_assistant_mcp.py`, `tools/launcher/assistant-test.cjs`: 보안·폴더 경계·MCP 프레임·홈 대화 회귀 검증.
+
+- `static/js/codex-usage.js`, `static/css/codex-usage.css`: 홈·IDE 공용 사용량/카운트다운 프레젠테이션.
+- `static/css/sentis-hud.css`: 공통 셸·패널·런처·로그인의 SENTIS HUD 테마. 색상 값은 `design-system.css`에서 관리한다.
+- `tools/launcher/codex-usage-test.cjs`: 만료·미제공·조회 실패·한도 병합·대화 컨텍스트 검증.

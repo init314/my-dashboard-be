@@ -46,8 +46,6 @@ public final class AssistantDto {
       String status,
       String command,
       String output,
-      String server,
-      String tool,
       List<FileChange> files) {}
 
   public record Turn(String id, String status, List<Item> items, String error) {}
@@ -80,10 +78,10 @@ public final class AssistantDto {
 
   public record Skill(String name, String description, String path, boolean enabled) {}
 
-  public record Connection(
-      String name, String status, String runtimeStatus, List<String> tools, String error) {}
+  public record Connection(String name, String status, int toolCount, String authStatus) {}
 
-  public record RateLimit(String name, Double usedPercent, Long resetsAt) {}
+  public record RateLimit(
+      String id, String name, Double usedPercent, Long resetsAt, Long windowDurationMins) {}
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Result(
@@ -110,6 +108,7 @@ public final class AssistantDto {
       String turnId,
       Item item,
       Usage usage,
+      List<RateLimit> rateLimits,
       Interaction interaction,
       String requestId,
       String text) {}

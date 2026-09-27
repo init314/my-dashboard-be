@@ -1,21 +1,21 @@
 package com.personal.dashboard.nas.controller;
 
-import com.personal.dashboard.nas.dto.NasSettings;
-import com.personal.dashboard.nas.service.NasSettingsService;
+import com.personal.dashboard.nas.dto.DavDto.Settings;
+import com.personal.dashboard.nas.service.DavService;
 import java.security.Principal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/cloud/nas")
 public class NasController {
-  private final NasSettingsService service;
+  private final DavService service;
 
-  public NasController(NasSettingsService service) {
+  public NasController(DavService service) {
     this.service = service;
   }
 
   @GetMapping
-  public NasSettings settings(Principal principal) {
-    return service.settings();
+  public Settings settings(Principal principal) {
+    return service.settings(principal.getName());
   }
 }

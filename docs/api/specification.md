@@ -2,45 +2,12 @@
 
 ## 공통
 
-Telemetry 수집 경로는 아래 OWNER 세션 공통 규칙 대신 service API Key Bearer 인증을 사용한다. OWNER의 로그인 인증과 분리하며 CSRF가 없다. service 관리 경로는 OWNER 인증과 기존 CSRF를 그대로 적용한다.
-
 별도 명시가 없으면 `/api/v1/*`는 OWNER 인증이 필요하고 JSON 요청/응답은 UTF-8 `application/json`이다.
 POST/PUT/PATCH/DELETE는 로그인 HTML의 `csrf-token`과 `csrf-header` meta를 사용한 헤더가 필수다. 세션 쿠키도 함께 전송한다.
 각 경로의 `{id}` 또는 `{device}`는 필수 non-null String ID다. ID는 서버 생성 UUID이며 기본 장비만 `local`이다.
 아래 표에 없는 query/path/body는 사용하지 않는다. 빈 response body인 201/202/204는 Content-Type을 보장하지 않는다.
 JSON 필드는 아래에 별도 optional/null 표기가 없으면 응답에서 필수·null 불가다. 빈 배열은 허용한다. boolean/int 요청 필드는 생략 시 Java 기본값(false/0)이 적용되며 최소값 제약을 검사한다.
 에러는 가능한 경우 `{message: String}`를 반환한다. 인증/CSRF 등 보안 필터와 프레임워크 기본 오류는 이 JSON 형식을 보장하지 않는다.
-
-## Service Telemetry
-
-### OWNER service management
-
-Base path: `/api/v1/telemetry/services`. All routes below require OWNER session authentication; state-changing routes require the dashboard CSRF token.
-
-| Method and path | Request | Success |
-| --- | --- | --- |
-| GET `/` | none | `200 Summary[]`; request/user totals, status, nullable latency and latest custom gauges |
-| POST `/` | `{name: string(1..100), description?: string(0..500), serviceType: Backend API\|Web\|Discord Bot\|Worker\|Custom}` | `201 ServiceView`; includes `apiKey` once |
-| GET `/{id}` | none | `200 ServiceView`; `apiKey` omitted |
-| DELETE `/{id}` | none | `204`; disable service and retain samples |
-| PUT `/{id}/enabled` | `{enabled: boolean}` | `200 ServiceView` |
-| POST `/{id}/key` | empty or omitted body | `200 ServiceView`; newly generated `apiKey` once, prior key invalidated |
-| DELETE `/{id}/key` | none | `204`; current key invalidated |
-| GET `/{id}/analytics?range=1h\|24h\|7d\|30d` | `range` defaults to `24h` | `200 Analytics`; timeline, endpoint counts/error rates, methods, statuses, percentile latencies and user/gauge summary |
-
-`ServiceView` fields: `serviceId`, `serviceName`, `description`, `serviceType`, `createdAt` (epoch ms), `enabled`, nullable `lastUsedAt`, `status` (`Receiving data`, `Idle`, `No recent telemetry`, `Disabled`), and `apiKey` only on create/regenerate. Summary additionally includes selected-range `requests`, rolling `requestsLastMinute`, `requestsLastHour`, `requestsToday`, error/latency values, unique users, DAU/WAU/MAU, peak concurrent users when `active_users` or `concurrent_users` gauges exist, and latest gauge map.
-
-### External service ingestion
-
-These endpoints use `Authorization: Bearer dash_sk_<32 base64url characters>`, with no OWNER cookie and no CSRF. A revoked, replaced, disabled, malformed or unknown key returns `401`. Accepted timestamps must be within the last 30 days and no more than five minutes in the future. Body limit is 64 KiB; limit is 120 requests per service per minute.
-
-| Method and path | Request fields | Success |
-| --- | --- | --- |
-| POST `/api/v1/telemetry/events` | `type` required (1..40 chars), optional ISO-8601 `timestamp`, optional `anonymousUserId` (1..128 chars, only for `user_activity`), optional `properties` with at most 24 scalar fields and 4 KiB serialized | `200 {events: 1, gauges: 0}` |
-| POST `/api/v1/telemetry/gauges` | `name` required (1..64 chars matching `[A-Za-z][A-Za-z0-9_.-]*`), `value` required finite number 0..1e12, optional ISO-8601 `timestamp` | `200 {events: 0, gauges: 1}` |
-| POST `/api/v1/telemetry/batch` | `events?` and `gauges?`, each max 100 entries; at least one total entry | `200 {events: number, gauges: number}` |
-
-For type `request`, the recommended properties are `endpoint`, `method`, `status` (100..599), and `latencyMs` (non-negative). Request statuses 400..599 count as errors. Type `error` increments error totals. Arbitrary service event types and gauge names are accepted within these bounds. Invalid body/timestamp returns `400`, oversized body returns `413`, and the per-service rate limit returns `429`. Missing measurements are `null`, never zero.
 
 | HTTP | 분류 | 발생 조건/안내 |
 | --- | --- | --- |
@@ -49,8 +16,7 @@ For type `request`, the recommended properties are `endpoint`, `method`, `status
 | 403 | FORBIDDEN | OWNER 권한 없음, CSRF/같은 origin 실패, 파일 루트 탈출 |
 | 404 | NOT_FOUND | 장비/앱/실행 핸들 없음 또는 다른 로그인에 속한 핸들 |
 | 409 | CONFLICT | 파일 누락/권한/중복/비어 있지 않은 폴더, 실행 제한/중복 attach |
-| 413 | PAYLOAD_TOO_LARGE | multipart 또는 Telemetry body 크기 제한 초과 |
-| 429 | RATE_LIMITED | 서비스별 Telemetry 분당 요청 한도 초과 |
+| 413 | UPLOAD_TOO_LARGE | multipart 크기 제한 초과 |
 | 500 | INTERNAL_ERROR | 키 복호화, DB, 예상하지 못한 처리 오류. 상세 인증정보/예외는 반환하지 않음 |
 | 502 | CONNECTION_FAILED | SSH/guacd/Chromium/UDP 등 연결·실행 실패 |
 | 504 | TIMEOUT | 서버 명령 10초 제한 초과 |
@@ -295,7 +261,7 @@ POST /api/v1/devices 및 PUT /api/v1/devices/{id}에서 fingerprint 생략/null�
 
 ## SSH 코드 에디터
 
-[Studio API 계약](studio.md)은 비동기 작업의 입력·결과·실패 상태와 소유권을 정의한다. 파일/Git 작업은 서버 자체(local, Docker 컨테이너) 또는 등록 SSH 서버에서 수행한다. Codex 작업은 등록 SSH 서버에서만 허용되며 선택한 SSH 계정의 Codex CLI와 인증을 사용한다. `local` Codex 요청은 job을 만들기 전에 HTTP 400으로 거절한다.
+[Studio API 계약](studio.md)은 비동기 작업의 입력·결과·실패 상태와 소유권을 정의한다. 실행은 서버 자체(local, Docker 컨테이너) 또는 등록 SSH 서버에서 수행한다.
 
 ## Codex App Server 입력
 
@@ -315,7 +281,7 @@ GET `/api/v1/tailscale`, POST `/api/v1/tailscale/login`, DELETE `/api/v1/tailsca
 
 ## 클라우드 저장소 API
 
-모든 엔드포인트는 OWNER 전용(미인증 401, 권한 부족 403), 변경 요청은 CSRF 필수(누락/불일치 403). 파일은 대시보드 서버의 영속 CLOUD_ROOT에 저장한다. `files/`는 별도 SMB NAS 계정에도 노출되며 HTTP와 SMB는 각각의 인증 경계를 사용한다. `{path}`는 OS 실제 경로가 아닌 `/`로 시작하는 가상 경로이며 최대 4096자, 단일 이름 최대 255자, `..`/`.`/역슬래시/제어 문자/심볼릭 링크는 허용하지 않는다. 디렉토리 루트 자체는 생성·이동·삭제할 수 없다. 아래에 기재하지 않은 body/query/path 매개변수는 사용하지 않는다.
+모든 엔드포인트는 OWNER 전용(미인증 401, 권한 부족 403), 변경 요청은 CSRF 필수(누락/불일치 403). 파일은 대시보드 서버의 private CLOUD_ROOT에 보관한다. `{path}`는 OS 실제 경로가 아닌 `/`로 시작하는 가상 경로이며 최대 4096자, 단일 이름 최대 255자, `..`/`.`/역슬래시/제어 문자/심볼릭 링크는 허용하지 않는다. 디렉토리 루트 자체는 생성·이동·삭제할 수 없다. 아래에 기재하지 않은 body/query/path 매개변수는 사용하지 않는다.
 
 | Method / URL | 입력 | 성공 응답 |
 | --- | --- | --- |
@@ -339,9 +305,11 @@ GET `/api/v1/tailscale`, POST `/api/v1/tailscale/login`, DELETE `/api/v1/tailsca
 
 실패는 공통 `{message:String}` 응답. 400 입력/경로/루트 변경/하위 폴더 자기 이동/ZIP 선택량 오류, 403 파일 접근 권한 부족, 404 존재하지 않는 파일·폴더·휴지통 항목, 409 이름 충돌·텍스트 revision 충돌, 413 업로드/텍스트/재귀 10,000개 한도, 415 UTF-8 텍스트가 아닌 미리보기, 500 기타 디스크 I/O 실패. 다중 UI 작업은 항목별 성공/실패를 표시하며 전체 원자적 batch API는 없다. 자세한 파일 보존·삭제·용량 제한은 [클라우드 드라이브](../cloud-drive.md)를 따른다.
 
-## NAS / SMB 연결 정보
+## NAS / WebDAV
 
-GET /api/v1/cloud/nas는 OWNER 세션으로 접근한다. 200 응답 필드는 `host`(string, 필수, 설정된 접속 주소. 미설정이면 빈 문자열), `port`(integer, 필수, 445), `share`(string, 필수, `storage`), `username`(string, 필수, SMB 사용자 이름)이다. 비밀번호는 반환하지 않는다. 미인증은 401, OWNER 권한이 없으면 403이며 기존 공통 `{message: string}` 형식을 사용한다. 파일 전송은 이 HTTP API가 아닌 Samba SMB3 서비스에서 수행한다. [접속과 운영 안내](../nas.md).
+GET /api/v1/cloud/nas 응답: enabled(boolean), path(/dav/), publicUrl(string, 미설정 시 빈 문자열), username(string). 비밀번호는 반환하지 않는다. 기존 OWNER 세션이 필요하다.
+
+/dav/**는 별도 무상태 OWNER Basic 인증으로 동작하며 인증 실패는 401과 WWW-Authenticate 헤더를 반환한다. 메서드, 상태 코드와 잠금·조건부 저장 제약은 [NAS 계약](../nas.md)을 따른다. 기존 JSON API와 달리 WebDAV XML/파일 응답을 사용한다.
 
 ## 원격 데스크톱 자동 구성
 
@@ -400,34 +368,14 @@ Block 배열은 BlockNote 0.54.2의 JSON 문서다. 전체 UTF-8 직렬화 2 MiB
 
 명시적 revision 비교와 조건부 UPDATE/DELETE로 오래된 쓰기를 거부한다. 자동 덮어쓰기·서버 측 재시도는 없다. API에 사용자별 ownerId를 받지 않으며 기존 단일 OWNER 계정의 비공개 저장소다.
 
-## 서버 Codex assistant와 MCP
+## 개인 AI 비서
 
-서버 assistant job은 기존 Studio job 수명·이벤트·취소 DTO와 Codex 권한을 사용하며 별도 경로에서 OWNER 로그인 세션 소유권과 변경 요청 CSRF를 검사한다. 앱 assistant UI는 IDE Codex 화면과 분리되어 대시보드 기능에 맞는 요청만 표시한다.
+| Method / path | 인증 | Query/body | 성공 | 오류/부수효과 |
+| --- | --- | --- | --- | --- |
+| GET /api/v1/assistant | OWNER | 없음 | 200 AssistantProject {deviceId:String,root:String}, 필수/non-null | 서버 파일 루트의 실제 .assistant 폴더 준비, 403/409 |
+| POST /api/v1/assistant/jobs | OWNER + CSRF | AssistantRequest {action:String(필수,40자),args:Studio Args(선택/null)} | 202 Studio JobView | 서버 고정 대상·danger-full-access·image 첨부만 허용, 400/413/429 |
+| GET /api/v1/assistant/jobs/{id} | OWNER | id:필수 non-null String | 200 Studio JobView | 미존재/다른 로그인 404 |
+| DELETE /api/v1/assistant/jobs/{id} | OWNER + CSRF | id:필수 non-null String | 204 | 로그인 소유 작업 취소, 404 |
+| POST /api/v1/assistant/jobs/{id}/inputs | OWNER + CSRF | id:필수 non-null String, Assistant Control | 204 | 실행 중 작업에 추가 지시·승인·답변·중지, 400/404/409 |
 
-| Method / URL | Auth | Request | Response |
-| --- | --- | --- | --- |
-| POST `/api/v1/assistant/jobs` | OWNER + CSRF | Studio `Request`: deviceId는 `local`, root는 서버 workspace root, action은 `setup` 또는 `codex-*` | 202 `JobView`; 설치/실행 실패는 FAILED 상태 |
-| GET `/api/v1/assistant/jobs/{id}` | OWNER + 생성 세션 | path id: job UUID | 200 `JobView`; 다른 세션/미존재 404 |
-| POST `/api/v1/assistant/jobs/{id}/inputs` | OWNER + 생성 세션 + CSRF | Assistant `Control`: 승인/질문 답변/steer/interrupt | 204; 미실행/지원하지 않는 입력 409 |
-| DELETE `/api/v1/assistant/jobs/{id}` | OWNER + 생성 세션 + CSRF | path id: job UUID | 204; 멱등 취소, 적용된 변경은 유지 |
-| GET `/api/v1/assistant/events?after={sequence}` | OWNER | 선택 정수 `after`, 기본 0 | 200 `AssistantEvent[]`; sequence, route 또는 applicationId, message. 최대 최근 100개 메모리 큐 |
-| POST `/api/v1/mcp` | `Authorization: Bearer DASHBOARD_MCP_TOKEN`; CSRF 제외 | MCP JSON-RPC 2.0 body | JSON-RPC `initialize`, `ping`, `tools/list`, `tools/call`; 알림은 202 |
-
-`DASHBOARD_MCP_TOKEN`은 환경변수로 제공할 때 32자 이상이어야 한다. 비어 있으면 부팅마다 난수 256-bit 값이 만들어져 server Codex child process에만 전달되며 외부 client에서는 사용할 수 없다. 외부 client는 설정한 값을 사용하고 HTTPS reverse proxy 또는 VPN을 거쳐 연결한다. authorization 누락/불일치는 401, Origin이 Host와 다른 요청은 403, Accept에 JSON이 없으면 406, JSON-RPC 입력 오류는 400이다. 응답은 `application/json`, protocolVersion은 요청이 지원되는 경우 `2025-03-26`, `2025-06-18`, `2025-11-25` 중 요청값을 반환하고 그 외에는 `2025-03-26`을 반환한다. 고정 세션 ID를 만들지 않는 stateless HTTP transport다.
-
-MCP tool 목록과 입력 계약:
-
-| Tool | Required args | Optional args / effect |
-| --- | --- | --- |
-| `open_page` | `route`: allowlisted string | 내부 launcher route를 browser event queue에 전달 |
-| `list_apps` | 없음 | 등록 외부 앱 메타데이터 목록 |
-| `open_app` | `id`: string ≤36 | 사용자 browser 설정에 따라 등록 앱 열기 event |
-| `list_calendar_events` | `from`, `to`: ISO date; `to`는 배타 | 1~366일의 일정 목록 |
-| `create_calendar_event` | `title` ≤120, `start`, `end`: local ISO date-time | `allDay` boolean=false, `location` ≤200, `notes` ≤4000, `color` `#RRGGBB` 기본 `#6b8afd`; 기존 일정 검증 적용 |
-| `list_notes` | 없음 | 메모 Entry 목록, 본문 제외 |
-| `read_note` | `id`: string ≤36 | Entry와 검증된 블록 본문 |
-| `create_note_folder` | `title` ≤200 | `parentId`: null 또는 string ≤36; 빈 폴더 생성 |
-| `create_note` | `title` ≤200, `text` ≤100000 | `parentId`: null 또는 string ≤36; 한 paragraph text block으로 생성 |
-| `append_note` | `id` ≤36, `text` ≤100000, `revision`: 0 이상 정수 | 현재 revision과 일치할 때 paragraph block 추가, 불일치 409 |
-
-Tool 오류는 MCP `CallToolResult.isError=true` 및 text content로 반환한다. 도구는 WorkspaceException의 검증 오류를 안전하게 전달하고 예상하지 못한 예외 세부 내용은 숨긴다. `open_page` navigation 이벤트는 owner 세션 browser만 GET으로 polling한다. MCP tool 자체는 삭제·임의 파일·셸 작업을 제공하지 않는다.
+허용 action, 전체 DTO 필드·optional/null·enum 규칙과 비동기 실패는 [AI 비서 계약](assistant.md)을 따른다. 기존 Studio job/대화 계약을 재사용하고 인증·CSRF 정책을 유지한다. 쿠키와 원본 MCP 설정은 public 응답에 포함하지 않는다. DB 변경은 없다.
